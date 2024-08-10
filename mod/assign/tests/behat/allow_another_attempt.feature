@@ -16,6 +16,7 @@ Feature: In an assignment, students start a new attempt based on their previous 
       | intro                               | Submit your online text |
       | assignsubmission_onlinetext_enabled | 1                       |
       | assignsubmission_file_enabled       | 0                       |
+      | maxattempts                         | -1                      |
       | attemptreopenmethod                 | manual                  |
       | hidegrader                          | 1                       |
       | submissiondrafts                    | 0                       |
@@ -33,7 +34,9 @@ Feature: In an assignment, students start a new attempt based on their previous 
 
     And I am on the "Test assignment name" Activity page logged in as teacher1
     And I follow "View all submissions"
+    And I change window size to "large"
     And I click on "Grade" "link" in the "Student 1" "table_row"
+    And I change window size to "medium"
     And I set the following fields to these values:
       | Allow another attempt | 1 |
     And I press "Save changes"
@@ -48,7 +51,9 @@ Feature: In an assignment, students start a new attempt based on their previous 
 
     And I am on the "Test assignment name" Activity page logged in as teacher1
     And I follow "View all submissions"
+    And I change window size to "large"
     And I click on "Grade" "link" in the "Student 1" "table_row"
+    And I change window size to "medium"
     And I should see "I'm the student first submission"
 
   @javascript @_alert
@@ -146,5 +151,5 @@ Feature: In an assignment, students start a new attempt based on their previous 
 
     And I am on the "Test assignment name" Activity page logged in as teacher1
     And I select "Group 2" from the "group" singleselect
-    And I click on "Grade" "link" in the ".submissionlinks" "css_element"
+    And I click on "Grade" "link" in the ".tertiary-navigation" "css_element"
     And I should see "2" in the "#id_attemptsettings" "css_element"

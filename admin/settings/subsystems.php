@@ -31,8 +31,6 @@ if ($hassiteconfig) { // speedup for non-admins, add all caps used on this page
         1 => get_string('completionactivitydefault', 'completion'),
         0 => get_string('completion_none', 'completion')
     );
-    $optionalsubsystems->add(new admin_setting_configselect('completiondefault', new lang_string('completiondefault', 'completion'),
-            new lang_string('configcompletiondefault', 'completion'), 1, $options));
 
     $optionalsubsystems->add($checkbox = new admin_setting_configcheckbox('enableavailability',
             new lang_string('enableavailability', 'availability'),
@@ -63,6 +61,12 @@ if ($hassiteconfig) { // speedup for non-admins, add all caps used on this page
         new lang_string('configmessaging', 'admin'),
         1)
     );
+
+    $optionalsubsystems->add(new admin_setting_configcheckbox('enablecustomreports',
+        new lang_string('enablecustomreports', 'core_reportbuilder'),
+        new lang_string('enablecustomreports_desc', 'core_reportbuilder'),
+        1
+    ));
 
     $fullunicodesupport = true;
     if ($DB->get_dbfamily() == 'mysql') {

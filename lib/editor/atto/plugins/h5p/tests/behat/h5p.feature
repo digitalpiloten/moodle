@@ -1,5 +1,5 @@
-@editor @editor_atto @atto @atto_h5p @core_h5p @_file_upload @_switch_iframe
-Feature: Add h5ps to Atto
+@editor @editor_atto @atto @atto_h5p @core_h5p @_switch_iframe
+Feature: Use the Atto editor to upload an h5p package
   To write rich text - I need to add h5ps.
 
   Background:
@@ -35,11 +35,10 @@ Feature: Add h5ps to Atto
 
   @javascript
   Scenario: Insert an h5p file
-    Given I log in as "admin"
-    And I follow "Manage private files..."
-    And I upload "h5p/tests/fixtures/guess-the-answer.h5p" file to "Files" filemanager
-    And I click on "Save changes" "button"
-    And I am on the PageName1 "page activity editing" page
+    Given the following "user private file" exists:
+      | user     | admin                                   |
+      | filepath | h5p/tests/fixtures/guess-the-answer.h5p |
+    And I am on the "PageName1" "page activity editing" page logged in as "admin"
     And I click on "Insert H5P" "button" in the "#fitem_id_page" "css_element"
     And I click on "Browse repositories..." "button" in the "Insert H5P" "dialogue"
     And I click on "Private files" "link" in the ".fp-repo-area" "css_element"
@@ -94,11 +93,10 @@ Feature: Add h5ps to Atto
 
   @javascript @external
   Scenario: Edit H5P content
-    Given I log in as "admin"
-    And I follow "Manage private files..."
-    And I upload "lib/editor/atto/tests/fixtures/drag.h5p" file to "Files" filemanager
-    And I click on "Save changes" "button"
-    And I am on the PageName1 "page activity editing" page
+    Given the following "user private file" exists:
+      | user     | admin                       |
+      | filepath | h5p/tests/fixtures/drag.h5p |
+    And I am on the "PageName1" "page activity editing" page logged in as "admin"
     And I click on "Insert H5P" "button" in the "#fitem_id_page" "css_element"
 #   H5P file content
     And I click on "Browse repositories..." "button" in the "Insert H5P" "dialogue"
@@ -127,12 +125,11 @@ Feature: Add h5ps to Atto
     And I should not see "Cloudberries"
 
   @javascript
-  Scenario: Enable/disable H5P options
-    Given I log in as "admin"
-    And I follow "Manage private files..."
-    And I upload "h5p/tests/fixtures/guess-the-answer.h5p" file to "Files" filemanager
-    And I click on "Save changes" "button"
-    And I am on the PageName1 "page activity editing" page
+  Scenario: Enable/disable H5P options atto
+    Given the following "user private file" exists:
+      | user     | admin                                   |
+      | filepath | h5p/tests/fixtures/guess-the-answer.h5p |
+    And I am on the "PageName1" "page activity editing" page logged in as "admin"
     And I click on "Insert H5P" "button" in the "#fitem_id_page" "css_element"
     And I click on "Browse repositories..." "button" in the "Insert H5P" "dialogue"
     And I click on "Private files" "link" in the ".fp-repo-area" "css_element"
@@ -140,14 +137,11 @@ Feature: Add h5ps to Atto
     And I click on "Select this file" "button"
 #   No display option button displayed
     And I click on "Insert H5P" "button" in the "Insert H5P" "dialogue"
-    And I wait until the page is ready
     When I click on "Save and display" "button"
     And I wait until the page is ready
     And I switch to "h5pcontent" iframe
     And I switch to "h5p-iframe" class iframe
-    Then I should not see "Reuse"
-    And I should not see "Embed"
-    And I should not see "Rights of use"
+    Then ".h5p-actions" "css_element" should not exist
     And I switch to the main frame
     And I navigate to "Settings" in current page administration
     And I click on ".h5p-placeholder" "css_element"
@@ -156,12 +150,10 @@ Feature: Add h5ps to Atto
 #   Only Allow Download button displayed
     And I click on "Allow download" "checkbox"
     And I click on "Insert H5P" "button" in the "Insert H5P" "dialogue"
-    And I wait until the page is ready
     And I click on "Save and display" "button"
-    And I wait until the page is ready
     And I switch to "h5pcontent" iframe
     And I switch to "h5p-iframe" class iframe
-    And I should see "Reuse"
+    And "Reuse" "text" should exist in the ".h5p-actions" "css_element"
     And I should not see "Embed"
     And I should not see "Rights of use"
     And I switch to the main frame
@@ -173,12 +165,10 @@ Feature: Add h5ps to Atto
     And I click on "Embed button" "checkbox"
     And I click on "Copyright button" "checkbox"
     And I click on "Insert H5P" "button" in the "Insert H5P" "dialogue"
-    And I wait until the page is ready
     And I click on "Save and display" "button"
-    And I wait until the page is ready
     And I switch to "h5pcontent" iframe
     And I switch to "h5p-iframe" class iframe
-    And I should not see "Reuse"
+    And "Reuse" "text" should not exist in the ".h5p-actions" "css_element"
     And I should see "Embed"
     And I should see "Rights of use"
 
@@ -211,11 +201,10 @@ Feature: Add h5ps to Atto
     And the following "course enrolments" exist:
       | user | course | role |
       | student1 | C1 | student |
-    And I log in as "admin"
-    And I follow "Manage private files..."
-    And I upload "h5p/tests/fixtures/guess-the-answer.h5p" file to "Files" filemanager
-    And I click on "Save changes" "button"
-    And I am on the PageName1 "page activity editing" page
+    And the following "user private file" exists:
+      | user     | admin                                   |
+      | filepath | h5p/tests/fixtures/guess-the-answer.h5p |
+    And I am on the "PageName1" "page activity editing" page logged in as "admin"
     And I click on "Insert H5P" "button" in the "#fitem_id_page" "css_element"
     And I click on "Browse repositories..." "button" in the "Insert H5P" "dialogue"
     And I click on "Private files" "link" in the ".fp-repo-area" "css_element"

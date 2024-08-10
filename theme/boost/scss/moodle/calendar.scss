@@ -9,12 +9,20 @@ $calendarEventUserColor: #dce7ec !default; // Pale blue.
 $calendarEventOtherColor: #ced4da !default; // Pale gray.
 
 // Border colours for the event colour indicators.
-$calendarEventCategoryBorder: 2px solid #9e619f !default; // Purple.
-$calendarEventCourseBorder: 2px solid #d34600 !default; // Red-orange.
-$calendarEventGlobalBorder: 2px solid #2b8713 !default; // Green.
-$calendarEventGroupBorder: 2px solid #9a6e02 !default; // Dark orange.
-$calendarEventUserBorder: 2px solid #4e7c91 !default; // Blue.
-$calendarEventOtherBorder: 2px solid #687889 !default; // Gray.
+$calendarEventCategoryBorderColor:#9e619f !default; // Purple.
+$calendarEventCourseBorderColor:#d34600 !default; // Red-orange.
+$calendarEventGlobalBorderColor:#2b8713 !default; // Green.
+$calendarEventGroupBorderColor:#9a6e02 !default; // Dark orange.
+$calendarEventUserBorderColor:#4e7c91 !default; // Blue.
+$calendarEventOtherBorderColor:#687889 !default; // Gray.
+
+// Border for the event colour indicators.
+$calendarEventCategoryBorder: 2px solid $calendarEventCategoryBorderColor !default; // Purple.
+$calendarEventCourseBorder: 2px solid $calendarEventCourseBorderColor !default; // Red-orange.
+$calendarEventGlobalBorder: 2px solid $calendarEventGlobalBorderColor !default; // Green.
+$calendarEventGroupBorder: 2px solid $calendarEventGroupBorderColor !default; // Dark orange.
+$calendarEventUserBorder: 2px solid $calendarEventUserBorderColor !default; // Blue.
+$calendarEventOtherBorder: 2px solid $calendarEventOtherBorderColor !default; // Gray.
 
 // This will be the colour of mini-calendar links, hide/show filter icons, edit/delete icon buttons.
 $calendarEventColor: #0d5ca1 !default;
@@ -129,6 +137,20 @@ $calendarCurrentDateBackground: $primary;
     }
 }
 
+#region-main {
+    .maincalendar {
+        .calendarwrapper {
+            td {
+                & > div {
+                    height: 11.5em;
+                    overflow: hidden;
+                }
+            }
+        }
+    }
+
+}
+
 .maincalendar {
     vertical-align: top;
     padding: 0;
@@ -154,8 +176,13 @@ $calendarCurrentDateBackground: $primary;
             margin: 0;
             padding: 0;
 
+            li[data-event-folded="true"] {
+                display: none;
+            }
+
             li {
                 list-style-type: none;
+                line-height: 1.2em;
 
                 > a {
                     @include text-truncate;
@@ -169,6 +196,10 @@ $calendarCurrentDateBackground: $primary;
                             text-decoration: $link-hover-decoration;
                         }
                     }
+                }
+
+                a[data-action="view-day-link"] {
+                    @include text-truncate;
                 }
 
                 .icon {
@@ -222,7 +253,12 @@ $calendarCurrentDateBackground: $primary;
         }
 
         td {
-            height: 5em;
+
+            a.day:focus {
+                display: inline-block;
+                border-radius: 50%;
+                box-shadow: $input-btn-focus-box-shadow;
+            }
 
             .day-number-circle {
                 display: inline-block;
@@ -248,7 +284,7 @@ $calendarCurrentDateBackground: $primary;
         }
 
         .clickable:hover {
-            background-color: #ededed;
+            background-color: $calendar-month-clickable-bg;
         }
     }
 
@@ -262,10 +298,10 @@ $calendarCurrentDateBackground: $primary;
     .calendar_event_site,
     .calendar_event_group,
     .calendar_event_user {
-        &:hover {
-            a {
-                color: $link-hover-color;
-                text-decoration: $link-hover-decoration;
+        a:has(> .icon) {
+            &:hover {
+                color: darken($calendarEventColor, 15%);
+                text-decoration: $link-decoration;
             }
         }
     }
@@ -521,7 +557,7 @@ $calendarCurrentDateBackground: $primary;
                 }
                 .calendarwrapper {
                     .arrow_text {
-                        display: none;
+                        @include sr-only;
                     }
                 }
             }
@@ -545,6 +581,25 @@ table.calendartable caption {
     caption-side: top;
 }
 
+@mixin day-number-has-event {
+    .day-number {
+        display: inline-block;
+        position: relative;
+
+        &:before {
+            content: '.';
+            display: inline-block;
+            position: absolute;
+            bottom: 0.4em;
+            left: 0;
+            text-align: center;
+            width: 100%;
+            font-size: 3em;
+            color: inherit;
+        }
+    }
+}
+
 @media (min-width: 768px) {
     #page-calender-view {
         .container-fluid {
@@ -553,7 +608,7 @@ table.calendartable caption {
     }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 768px) {
     section:not(#region-main) {
         .block {
             &.block_calendar_month {
@@ -573,7 +628,10 @@ table.calendartable caption {
                         .previous,
                         .next {
                             width: 30%;
-                            font-size: 0.8em;
+
+                            .arrow_text {
+                                display: none;
+                            }
                         }
                     }
 
@@ -595,22 +653,7 @@ table.calendartable caption {
                                         display: none;
                                     }
 
-                                    .day-number {
-                                        display: inline-block;
-                                        position: relative;
-
-                                        &:before {
-                                            content: '.';
-                                            display: inline-block;
-                                            position: absolute;
-                                            bottom: 0.4em;
-                                            left: 0;
-                                            text-align: center;
-                                            width: 100%;
-                                            font-size: 3em;
-                                            color: inherit;
-                                        }
-                                    }
+                                    @include day-number-has-event;
                                 }
                                 &:after {
                                     content: '';
@@ -625,7 +668,7 @@ table.calendartable caption {
                                 &.clickable:not(.today):hover {
                                     .day-number-circle {
                                         border-radius: 50%;
-                                        background-color: #ededed;
+                                        background-color: $calendar-month-clickable-bg;
                                     }
                                 }
                             }
@@ -644,7 +687,7 @@ table.calendartable caption {
     }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 768px) {
     .maincalendar {
         .calendartable {
             &.calendarmonth {
@@ -663,11 +706,17 @@ table.calendartable caption {
                         [data-region="day-content"] {
                             display: none;
                         }
+
+                        @include day-number-has-event;
                     }
                     &:after {
                         content: '';
                         display: block;
                         margin-top: calc(100% - 26px);
+                    }
+
+                    & > div {
+                        height: auto !important; // stylelint-disable-line declaration-no-important
                     }
                 }
             }
@@ -698,4 +747,5 @@ table.calendartable caption {
 
 .cal_courses_flt {
     color: $gray-600;
+    max-width: 75%;
 }

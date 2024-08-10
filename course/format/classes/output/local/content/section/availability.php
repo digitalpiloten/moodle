@@ -24,13 +24,15 @@
 
 namespace core_courseformat\output\local\content\section;
 
-use core_courseformat\base as course_format;
-use section_info;
-use renderable;
-use templatable;
-use core_availability\info_section;
-use core_availability\info;
 use context_course;
+use core_availability_multiple_messages;
+use core\output\named_templatable;
+use core_availability\info;
+use core_availability\info_section;
+use core_courseformat\base as course_format;
+use core_courseformat\output\local\courseformat_named_templatable;
+use renderable;
+use section_info;
 use stdClass;
 
 /**
@@ -40,13 +42,24 @@ use stdClass;
  * @copyright 2020 Ferran Recio <ferran@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class availability implements renderable, templatable {
+class availability implements named_templatable, renderable {
+
+    use courseformat_named_templatable;
 
     /** @var course_format the course format class */
     protected $format;
 
     /** @var section_info the section object */
     protected $section;
+
+    /** @var string the has availability attribute name */
+    protected $hasavailabilityname;
+
+    /** @var stdClass|null the instance export data */
+    protected $data = null;
+
+    /** @var int Availability excerpt text max size treshold */
+    protected const AVAILABILITY_EXCERPT_MAXSIZE = 100;
 
     /**
      * Constructor.
@@ -57,25 +70,48 @@ class availability implements renderable, templatable {
     public function __construct(course_format $format, section_info $section) {
         $this->format = $format;
         $this->section = $section;
+        $this->hasavailabilityname = 'hasavailability';
     }
 
     /**
      * Export this data so it can be used as the context for a mustache template.
      *
      * @param \renderer_base $output typically, the renderer that's calling this function
-     * @return stdClass data context for a mustache template
+     * @return stdClass|null data context for a mustache template
      */
-    public function export_for_template(\renderer_base $output): stdClass {
+    public function export_for_template(\renderer_base $output): ?stdClass {
+        $this->build_export_data($output);
+        return $this->data;
+    }
 
-        $data = (object)[
-            'info' => $this->get_info($output),
-        ];
+    /**
+     * Returns if the output has availability info to display.
+     *
+     * @param \renderer_base $output typically, the renderer that's calling this function
+     * @return bool if the element has availability data to display
+     */
+    public function has_availability(\renderer_base $output): bool {
+        $this->build_export_data($output);
+        $attributename = $this->hasavailabilityname;
+        return $this->data->$attributename;
+    }
 
-        if (!empty($data->info)) {
-            $data->hasavailability = true;
+    /**
+     * Protected method to build the export data.
+     *
+     * @param \renderer_base $output typically, the renderer that's calling this function
+     */
+    protected function build_export_data(\renderer_base $output) {
+        if (!empty($this->data)) {
+            return;
         }
 
-        return $data;
+        $data = (object) $this->get_info($output);
+
+        $attributename = $this->hasavailabilityname;
+        $data->$attributename = !empty($data->info);
+
+        $this->data = $data;
     }
 
     /**
@@ -90,7 +126,7 @@ class availability implements renderable, templatable {
      * are going to be unavailable etc). This logic is the same as for
      * activities.
      *
-     * @param renderer_base $output typically, the renderer that's calling this function
+     * @param \renderer_base $output typically, the renderer that's calling this function
      * @return stdclass data context for a mustache template
      */
     protected function get_info(\renderer_base $output): array {
@@ -101,29 +137,25 @@ class availability implements renderable, templatable {
 
         $canviewhidden = has_capability('moodle/course:viewhiddensections', $context, $USER);
 
-        $info = [];
+        $editurl = new \moodle_url(
+            '/course/editsection.php',
+            ['id' => $this->section->id, 'showonly' => 'availabilityconditions']
+        );
+        $info = ['editurl' => $editurl->out(false)];
         if (!$section->visible) {
-            if ($canviewhidden) {
-                $info[] = $this->availability_info(get_string('hiddenfromstudents'), 'ishidden');
-            } else {
-                // We are here because of the setting "Hidden sections are shown as not available".
-                // Student can not see the section contents but can see its name.
-                $info[] = $this->availability_info(get_string('notavailable'), 'ishidden');
-            }
+            return [];
         } else if (!$section->uservisible) {
             if ($section->availableinfo) {
                 // Note: We only get to this function if availableinfo is non-empty,
                 // so there is definitely something to print.
-                $formattedinfo = info::format_info($section->availableinfo, $section->course);
-                $info[] = $this->availability_info($formattedinfo, 'isrestricted');
+                $info['info'] = $this->get_availability_data($output, $section->availableinfo, 'isrestricted');
             }
         } else if ($canviewhidden && !empty($CFG->enableavailability)) {
             // Check if there is an availability restriction.
             $ci = new info_section($section);
             $fullinfo = $ci->get_full_information();
             if ($fullinfo) {
-                $formattedinfo = info::format_info($fullinfo, $section->course);
-                $info[] = $this->availability_info($formattedinfo, 'isrestricted isfullinfo');
+                $info['info'] = $this->get_availability_data($output, $fullinfo, 'isrestricted isfullinfo');
             }
         }
 
@@ -131,13 +163,100 @@ class availability implements renderable, templatable {
     }
 
     /**
+     * Get the basic availability information data.
+     *
+     * @param \renderer_base $output typically, the renderer that's calling this function
+     * @param string|core_availability_multiple_messages $availabilityinfo the avalability info
+     * @param string $additionalclasses additional css classes
+     * @return stdClass the availability information data
+     */
+    protected function get_availability_data($output, $availabilityinfo, $additionalclasses = ''): stdClass {
+        // At this point, availabilityinfo is either a string or a renderable. We need to handle both cases in a different way.
+        if (is_string($availabilityinfo)) {
+            $data = $this->availability_info_from_string($output, $availabilityinfo);
+        } else {
+            $data = $this->availability_info_from_output($output, $availabilityinfo);
+        }
+
+        $data->classes = $additionalclasses;
+
+        $additionalclasses = array_filter(explode(' ', $additionalclasses));
+        if (in_array('ishidden', $additionalclasses)) {
+            $data->ishidden = 1;
+        } else if (in_array('isstealth', $additionalclasses)) {
+            $data->isstealth = 1;
+        } else if (in_array('isrestricted', $additionalclasses)) {
+            $data->isrestricted = 1;
+            if (in_array('isfullinfo', $additionalclasses)) {
+                $data->isfullinfo = 1;
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Generate the basic availability information data from a string.
+     * Just shorten availability text to generate the excerpt text.
+     *
+     * @param \renderer_base $output typically, the renderer that's calling this function
+     * @param string $availabilityinfo the avalability info
+     * @return stdClass the availability information data
+     */
+    protected function availability_info_from_string(\renderer_base $output, string $availabilityinfo): stdClass {
+        $course = $this->format->get_course();
+
+        $text = info::format_info($availabilityinfo, $course);
+        $data = ['text' => $text];
+
+        if (strlen(html_to_text($text, 0, false)) > self::AVAILABILITY_EXCERPT_MAXSIZE) {
+            $data['excerpt'] = shorten_text($text, self::AVAILABILITY_EXCERPT_MAXSIZE);
+        }
+
+        return (object) $data;
+    }
+
+    /**
+     * Generate the basic availability information data from a renderable.
+     * Use the header and the first item to generate the excerpt text.
+     *
+     * @param \renderer_base $output typically, the renderer that's calling this function
+     * @param core_availability_multiple_messages $availabilityinfo the avalability info
+     * @return stdClass the availability information data
+     */
+    protected function availability_info_from_output(
+        \renderer_base $output,
+        core_availability_multiple_messages $availabilityinfo
+    ): stdClass {
+        $course = $this->format->get_course();
+
+        $renderable = new \core_availability\output\availability_info($availabilityinfo);
+        // We need to export_for_template() instead of directly render, to reuse the info for both 'text' and 'excerpt'.
+        $info = $renderable->export_for_template($output);
+
+        $text = $output->render_from_template('core_availability/availability_info', $info);
+        $data = ['text' => info::format_info($text, $course)];
+
+        if (!empty($info->items)) {
+            $excerpttext = $info->header . ' ' . $info->items[0]->header;
+            $data['excerpt'] = info::format_info($excerpttext, $course);
+        }
+
+        return (object) $data;
+    }
+
+    /**
      * Generate the basic availability information data.
      *
+     * @deprecated since Moodle 4.3 MDL-78204. Please use {@see self::get_availability_data} instead.
+     * @todo MDL-78489 This will be deleted in Moodle 4.7.
      * @param string $text the formatted avalability text
      * @param string $additionalclasses additional css classes
      * @return stdClass the availability information data
      */
     protected function availability_info($text, $additionalclasses = ''): stdClass {
+        debugging('Use of ' . __FUNCTION__ . '() have been deprecated, ' .
+        'please use core_courseformat\output\local\content\section\availability::get_availability_data()', DEBUG_DEVELOPER);
 
         $data = (object)[
             'text' => $text,

@@ -22,7 +22,7 @@
  */
 import DynamicForm from 'core_form/dynamicform';
 import ModalForm from 'core_form/modalform';
-import {get_string as getString} from 'core/str';
+import {getString} from 'core/str';
 import {add as addToast} from 'core/toast';
 
 /**
@@ -33,6 +33,7 @@ import {add as addToast} from 'core/toast';
  */
 export const initDynamicForm = (containerSelector, formClass) => {
     const form = new DynamicForm(document.querySelector(containerSelector), formClass);
+
     // When form is saved, refresh it to remove validation errors, if any:
     form.addEventListener(form.events.FORM_SUBMITTED, () => {
         form.load();
@@ -40,6 +41,9 @@ export const initDynamicForm = (containerSelector, formClass) => {
         .then(addToast)
         .catch(null);
     });
+
+    // Reload the page on cancel.
+    form.addEventListener(form.events.CANCEL_BUTTON_PRESSED, () => window.location.reload());
 };
 
 /**

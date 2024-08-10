@@ -28,6 +28,7 @@ defined('MOODLE_INTERNAL') || die;
 require_once($CFG->dirroot . '/mod/lti/locallib.php');
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use stdClass;
 
 /**
@@ -371,8 +372,9 @@ class registration_helper {
      */
     public function validate_registration_token(string $registrationtokenjwt): array {
         global $DB;
+        // JWK::parseKeySet uses RS256 algorithm by default.
         $keys = JWK::parseKeySet(jwks_helper::get_jwks());
-        $registrationtoken = JWT::decode($registrationtokenjwt, $keys, ['RS256']);
+        $registrationtoken = JWT::decode($registrationtokenjwt, $keys);
         $response = [];
         // Get clientid from registrationtoken.
         $clientid = $registrationtoken->sub;
@@ -441,7 +443,7 @@ class registration_helper {
      *
      * @return mixed Tool Proxy details
      */
-    public function get_tool_proxy(int $proxyid) : array {
+    public function get_tool_proxy(int $proxyid): array {
         return lti_get_tool_proxy($proxyid);
     }
 }

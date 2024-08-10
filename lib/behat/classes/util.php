@@ -125,9 +125,18 @@ class behat_util extends testing_util {
         // Set noreplyaddress to an example domain, as it should be valid email address and test site can be a localhost.
         set_config('noreplyaddress', 'noreply@example.com');
 
+        // Set the support email address.
+        set_config('supportemail', 'email@example.com');
+
         // Remove any default blocked hosts and port restrictions, to avoid blocking tests (eg those using local files).
         set_config('curlsecurityblockedhosts', '');
         set_config('curlsecurityallowedport', '');
+
+        // Execute all the adhoc tasks.
+        while ($task = \core\task\manager::get_next_adhoc_task(time())) {
+            $task->execute();
+            \core\task\manager::adhoc_task_complete($task);
+        }
 
         // Keeps the current version of database and dataroot.
         self::store_versions_hash();
@@ -217,7 +226,7 @@ class behat_util extends testing_util {
 
             behat_error (BEHAT_EXITCODE_REQUIREMENT, $CFG->behat_wwwroot . ' is not available, ensure you specified ' .
                 'correct url and that the server is set up and started.' . PHP_EOL . ' More info in ' .
-                behat_command::DOCS_URL . PHP_EOL);
+                behat_command::DOCS_URL . PHP_EOL . parent::get_site_info());
         }
 
         // Check if cli version is same as web version.
@@ -375,7 +384,7 @@ class behat_util extends testing_util {
      * Returns the path to the file which specifies if test environment is enabled
      * @return string
      */
-    public final static function get_test_file_path() {
+    final public static function get_test_file_path() {
         return behat_command::get_parent_behat_dir() . '/test_environment_enabled.txt';
     }
 
@@ -420,8 +429,14 @@ class behat_util extends testing_util {
         core_courseformat\base::reset_course_cache(0);
         get_fast_modinfo(0, 0, true);
 
+        // Reset the DI container.
+        \core\di::reset_container();
+
         // Inform data generator.
         self::get_data_generator()->reset();
+
+        // Reset the task manager.
+        \core\task\manager::reset_state();
 
         // Initialise $CFG with default values. This is needed for behat cli process, so we don't have modified
         // $CFG values from the old run. @see set_config.
@@ -503,10 +518,12 @@ class behat_util extends testing_util {
         $siteinfo = parent::get_site_info();
 
         $accessibility = empty(behat_config_manager::get_behat_run_config_value('axe')) ? 'No' : 'Yes';
+        $scssdeprecations = empty(behat_config_manager::get_behat_run_config_value('scss-deprecations')) ? 'No' : 'Yes';
 
         $siteinfo .= <<<EOF
 Run optional tests:
 - Accessibility: {$accessibility}
+- SCSS deprecations: {$scssdeprecations}
 
 EOF;
 

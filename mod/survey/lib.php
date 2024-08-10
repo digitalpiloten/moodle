@@ -54,6 +54,8 @@ define("SURVEY_COLLES_PREFERRED",        "2");
 define("SURVEY_COLLES_PREFERRED_ACTUAL", "3");
 define("SURVEY_ATTLS",                   "4");
 define("SURVEY_CIQ",                     "5");
+// Question length to wrap.
+define("SURVEY_QLENGTH_WRAP",            "80");
 
 require_once(__DIR__ . '/deprecatedlib.php');
 
@@ -393,7 +395,7 @@ function survey_get_user_answers($surveyid, $questionid, $groupid, $sort="sa.ans
  * @param int $surveyid
  * @param int $questionid
  * @param int $userid
- * @return array
+ * @return stdClass|false
  */
 function survey_get_user_answer($surveyid, $questionid, $userid) {
     global $DB;
@@ -720,13 +722,14 @@ function survey_get_post_actions() {
  * Implementation of the function for printing the form elements that control
  * whether the course reset functionality affects the survey.
  *
- * @param object $mform form passed by reference
+ * @param MoodleQuickForm $mform form passed by reference
  */
 function survey_reset_course_form_definition(&$mform) {
     $mform->addElement('header', 'surveyheader', get_string('modulenameplural', 'survey'));
-    $mform->addElement('checkbox', 'reset_survey_answers', get_string('deleteallanswers','survey'));
-    $mform->addElement('checkbox', 'reset_survey_analysis', get_string('deleteanalysis','survey'));
-    $mform->disabledIf('reset_survey_analysis', 'reset_survey_answers', 'checked');
+    $mform->addElement('static', 'surveydelete', get_string('delete'));
+    $mform->addElement('checkbox', 'reset_survey_answers', get_string('deleteallanswers', 'survey'));
+    $mform->addElement('checkbox', 'reset_survey_analysis', get_string('deleteanalysis', 'survey'));
+    $mform->hideIf('reset_survey_analysis', 'reset_survey_answers', 'checked');
 }
 
 /**
@@ -782,7 +785,7 @@ function survey_reset_userdata($data) {
  * @uses FEATURE_GRADE_HAS_GRADE
  * @uses FEATURE_GRADE_OUTCOMES
  * @param string $feature FEATURE_xx constant for requested feature
- * @return mixed True if module supports feature, false if not, null if doesn't know
+ * @return mixed True if module supports feature, false if not, null if doesn't know or string for the module purpose.
  */
 function survey_supports($feature) {
     switch($feature) {
@@ -795,6 +798,7 @@ function survey_supports($feature) {
         case FEATURE_GRADE_OUTCOMES:          return false;
         case FEATURE_BACKUP_MOODLE2:          return true;
         case FEATURE_SHOW_DESCRIPTION:        return true;
+        case FEATURE_MOD_PURPOSE:             return MOD_PURPOSE_COMMUNICATION;
 
         default: return null;
     }
@@ -806,31 +810,30 @@ function survey_supports($feature) {
  * It is safe to rely on PAGE here as we will only ever be within the module
  * context when this is called
  *
- * @param navigation_node $settings
+ * @param settings_navigation $settings
  * @param navigation_node $surveynode
  */
-function survey_extend_settings_navigation($settings, $surveynode) {
-    global $PAGE;
+function survey_extend_settings_navigation(settings_navigation $settings, navigation_node $surveynode) {
+    global $DB;
 
-    if (has_capability('mod/survey:readresponses', $PAGE->cm->context)) {
-        $responsesnode = $surveynode->add(get_string("responsereports", "survey"));
+    $cm = get_coursemodule_from_id('survey', $settings->get_page()->cm->id);
+    $context = context_module::instance($cm->id);
 
-        $url = new moodle_url('/mod/survey/report.php', array('id' => $PAGE->cm->id, 'action'=>'summary'));
-        $responsesnode->add(get_string("summary", "survey"), $url);
+    // Check to see if groups are being used in this survey, confirm user can access.
+    $groupmode = groups_get_activity_groupmode($cm);
+    $currentgroup = groups_get_activity_group($cm, true);
 
-        $url = new moodle_url('/mod/survey/report.php', array('id' => $PAGE->cm->id, 'action'=>'scales'));
-        $responsesnode->add(get_string("scales", "survey"), $url);
+    if (has_capability('mod/survey:readresponses', $context) &&
+            !($currentgroup === 0 && $groupmode == SEPARATEGROUPS && !has_capability('moodle/site:accessallgroups', $context))) {
 
-        $url = new moodle_url('/mod/survey/report.php', array('id' => $PAGE->cm->id, 'action'=>'questions'));
-        $responsesnode->add(get_string("question", "survey"), $url);
-
-        $url = new moodle_url('/mod/survey/report.php', array('id' => $PAGE->cm->id, 'action'=>'students'));
-        $responsesnode->add(get_string('participants'), $url);
-
-        if (has_capability('mod/survey:download', $PAGE->cm->context)) {
-            $url = new moodle_url('/mod/survey/report.php', array('id' => $PAGE->cm->id, 'action'=>'download'));
-            $surveynode->add(get_string('downloadresults', 'survey'), $url);
+        $survey = $DB->get_record("survey", ["id" => $cm->instance]);
+        $url = new moodle_url('/mod/survey/report.php', ['id' => $cm->id]);
+        if ($survey && ($survey->template != SURVEY_CIQ)) {
+            $url->param('action', 'summary');
+        } else {
+            $url->param('action', 'questions');
         }
+        $surveynode->add(get_string("responsereports", "survey"), $url);
     }
 }
 

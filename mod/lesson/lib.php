@@ -832,11 +832,12 @@ function lesson_process_post_save(&$lesson) {
  * Implementation of the function for printing the form elements that control
  * whether the course reset functionality affects the lesson.
  *
- * @param $mform form passed by reference
+ * @param MoodleQuickForm $mform form passed by reference
  */
 function lesson_reset_course_form_definition(&$mform) {
     $mform->addElement('header', 'lessonheader', get_string('modulenameplural', 'lesson'));
-    $mform->addElement('advcheckbox', 'reset_lesson', get_string('deleteallattempts','lesson'));
+    $mform->addElement('static', 'lessondelete', get_string('delete'));
+    $mform->addElement('advcheckbox', 'reset_lesson', get_string('deleteallattempts', 'lesson'));
     $mform->addElement('advcheckbox', 'reset_lesson_user_overrides',
             get_string('removealluseroverrides', 'lesson'));
     $mform->addElement('advcheckbox', 'reset_lesson_group_overrides',
@@ -889,14 +890,14 @@ function lesson_reset_userdata($data) {
     global $CFG, $DB;
 
     $componentstr = get_string('modulenameplural', 'lesson');
-    $status = array();
+    $status = [];
 
     if (!empty($data->reset_lesson)) {
         $lessonssql = "SELECT l.id
                          FROM {lesson} l
                         WHERE l.course=:course";
 
-        $params = array ("course" => $data->courseid);
+        $params = ["course" => $data->courseid];
         $lessons = $DB->get_records_sql($lessonssql, $params);
 
         // Get rid of attempts files.
@@ -917,12 +918,16 @@ function lesson_reset_userdata($data) {
         $DB->delete_records_select('lesson_attempts', "lessonid IN ($lessonssql)", $params);
         $DB->delete_records_select('lesson_branch', "lessonid IN ($lessonssql)", $params);
 
-        // remove all grades from gradebook
+        // Remove all grades from gradebook.
         if (empty($data->reset_gradebook_grades)) {
             lesson_reset_gradebook($data->courseid);
         }
 
-        $status[] = array('component'=>$componentstr, 'item'=>get_string('deleteallattempts', 'lesson'), 'error'=>false);
+        $status[] = [
+            'component' => $componentstr,
+            'item' => get_string('deleteallattempts', 'lesson'),
+            'error' => false,
+        ];
     }
 
     $purgeoverrides = false;
@@ -930,40 +935,46 @@ function lesson_reset_userdata($data) {
     // Remove user overrides.
     if (!empty($data->reset_lesson_user_overrides)) {
         $DB->delete_records_select('lesson_overrides',
-                'lessonid IN (SELECT id FROM {lesson} WHERE course = ?) AND userid IS NOT NULL', array($data->courseid));
-        $status[] = array(
+                'lessonid IN (SELECT id FROM {lesson} WHERE course = ?) AND userid IS NOT NULL', [$data->courseid]);
+        $status[] = [
             'component' => $componentstr,
-            'item' => get_string('useroverridesdeleted', 'lesson'),
-            'error' => false);
+            'item' => get_string('useroverrides', 'lesson'),
+            'error' => false,
+        ];
         $purgeoverrides = true;
     }
     // Remove group overrides.
     if (!empty($data->reset_lesson_group_overrides)) {
         $DB->delete_records_select('lesson_overrides',
-        'lessonid IN (SELECT id FROM {lesson} WHERE course = ?) AND groupid IS NOT NULL', array($data->courseid));
-        $status[] = array(
+        'lessonid IN (SELECT id FROM {lesson} WHERE course = ?) AND groupid IS NOT NULL', [$data->courseid]);
+        $status[] = [
             'component' => $componentstr,
-            'item' => get_string('groupoverridesdeleted', 'lesson'),
-            'error' => false);
+            'item' => get_string('groupoverrides', 'lesson'),
+            'error' => false,
+        ];
         $purgeoverrides = true;
     }
-    /// updating dates - shift may be negative too
+    // Updating dates - shift may be negative too.
     if ($data->timeshift) {
         $DB->execute("UPDATE {lesson_overrides}
                          SET available = available + ?
                        WHERE lessonid IN (SELECT id FROM {lesson} WHERE course = ?)
-                         AND available <> 0", array($data->timeshift, $data->courseid));
+                         AND available <> 0", [$data->timeshift, $data->courseid]);
         $DB->execute("UPDATE {lesson_overrides}
                          SET deadline = deadline + ?
                        WHERE lessonid IN (SELECT id FROM {lesson} WHERE course = ?)
-                         AND deadline <> 0", array($data->timeshift, $data->courseid));
+                         AND deadline <> 0", [$data->timeshift, $data->courseid]);
 
         $purgeoverrides = true;
 
         // Any changes to the list of dates that needs to be rolled should be same during course restore and course reset.
         // See MDL-9367.
-        shift_course_mod_dates('lesson', array('available', 'deadline'), $data->timeshift, $data->courseid);
-        $status[] = array('component'=>$componentstr, 'item'=>get_string('datechanged'), 'error'=>false);
+        shift_course_mod_dates('lesson', ['available', 'deadline'], $data->timeshift, $data->courseid);
+        $status[] = [
+            'component' => $componentstr,
+            'item' => get_string('date'),
+            'error' => false,
+        ];
     }
 
     if ($purgeoverrides) {
@@ -981,7 +992,7 @@ function lesson_reset_userdata($data) {
  * @uses FEATURE_GRADE_HAS_GRADE
  * @uses FEATURE_GRADE_OUTCOMES
  * @param string $feature FEATURE_xx constant for requested feature
- * @return mixed True if module supports feature, false if not, null if doesn't know
+ * @return mixed True if module supports feature, false if not, null if doesn't know or string for the module purpose.
  */
 function lesson_supports($feature) {
     switch($feature) {
@@ -1003,6 +1014,8 @@ function lesson_supports($feature) {
             return true;
         case FEATURE_SHOW_DESCRIPTION:
             return true;
+        case FEATURE_MOD_PURPOSE:
+            return MOD_PURPOSE_INTERACTIVECONTENT;
         default:
             return null;
     }
@@ -1017,9 +1030,7 @@ function lesson_supports($feature) {
  * @param settings_navigation $settings
  * @param navigation_node $lessonnode
  */
-function lesson_extend_settings_navigation($settings, $lessonnode) {
-    global $PAGE, $DB;
-
+function lesson_extend_settings_navigation(settings_navigation $settings, navigation_node $lessonnode) {
     // We want to add these new nodes after the Edit settings node, and before the
     // Locally assigned roles node. Of course, both of those are controlled by capabilities.
     $keys = $lessonnode->get_children_key_list();
@@ -1031,17 +1042,18 @@ function lesson_extend_settings_navigation($settings, $lessonnode) {
         $beforekey = $keys[$i + 1];
     }
 
-    if (has_capability('mod/lesson:manageoverrides', $PAGE->cm->context)) {
-        $url = new moodle_url('/mod/lesson/overrides.php', array('cmid' => $PAGE->cm->id));
+    if (has_capability('mod/lesson:manageoverrides', $settings->get_page()->cm->context)) {
+        $url = new moodle_url('/mod/lesson/overrides.php', ['cmid' => $settings->get_page()->cm->id, 'mode' => 'user']);
         $node = navigation_node::create(get_string('overrides', 'lesson'), $url,
                 navigation_node::TYPE_SETTING, null, 'mod_lesson_useroverrides');
         $lessonnode->add_node($node, $beforekey);
     }
 
-    if (has_capability('mod/lesson:viewreports', $PAGE->cm->context)) {
+    if (has_capability('mod/lesson:viewreports', $settings->get_page()->cm->context)) {
         $reportsnode = $lessonnode->add(
             get_string('reports', 'lesson'),
-            new moodle_url('/mod/lesson/report.php', ['id' => $PAGE->cm->id, 'action' => 'reportoverview'])
+            new moodle_url('/mod/lesson/report.php', ['id' => $settings->get_page()->cm->id,
+                'action' => 'reportoverview'])
         );
     }
 }
@@ -1180,7 +1192,7 @@ function lesson_get_file_areas() {
  * @package  mod_lesson
  * @category files
  * @global stdClass $CFG
- * @param file_browse $browser file browser instance
+ * @param file_browser $browser file browser instance
  * @param array $areas file areas
  * @param stdClass $course course object
  * @param stdClass $cm course module object

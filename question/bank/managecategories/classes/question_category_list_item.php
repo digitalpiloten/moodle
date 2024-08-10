@@ -34,7 +34,7 @@ class question_category_list_item extends \list_item {
      * @param bool $last Is the last on the list.
      * @param \list_item $lastitem Last item.
      */
-    public function set_icon_html($first, $last, $lastitem) : void {
+    public function set_icon_html($first, $last, $lastitem): void {
         global $CFG;
         $category = $this->item;
         $url = new moodle_url('/question/bank/managecategories/category.php',
@@ -75,15 +75,19 @@ class question_category_list_item extends \list_item {
      * @return string Item html.
      * @throws \moodle_exception
      */
-    public function item_html($extraargs = []) : string {
+    public function item_html($extraargs = []): string {
         global $PAGE, $OUTPUT;
         $str = $extraargs['str'];
         $category = $this->item;
 
         // Each section adds html to be displayed as part of this list item.
         $nodeparent = $PAGE->settingsnav->find('questionbank', \navigation_node::TYPE_CONTAINER);
-        $questionbankurl = new moodle_url($nodeparent->action->get_path(), $this->parentlist->pageurl->params());
+
+        // The category URL is based on the node action.
+        $questionbankurl = new moodle_url($nodeparent->action->out_omit_querystring(),
+            $this->parentlist->pageurl->params());
         $questionbankurl->param('cat', $category->id . ',' . $category->contextid);
+
         $categoryname = format_string($category->name, true, ['context' => $this->parentlist->context]);
         $idnumber = null;
         if ($category->idnumber !== null && $category->idnumber !== '') {

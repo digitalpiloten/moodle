@@ -39,7 +39,7 @@
                 "url": "http://example.org/help",
                 "linktext": "",
                 "icon":{
-                    "extraclasses": "iconhelp",
+                    "extraclasses": "",
                     "attributes": [
                         {"name": "src", "value": "../../../pix/help.svg"},
                         {"name": "alt", "value": "Help icon"}
@@ -64,21 +64,24 @@
         "addoverride": {
             "link": "https://moodle.org",
             "text": "Add override"
-        }
+        },
+        "headinglevel": 3,
+        "heading": "Some heading"
     }
 
 }}
-<div class="container-fluid mb-2">
+<div class="container-fluid tertiary-navigation">
     <div class="row">
-        <div class="col-xs-6">
         {{#urlselect}}
-            {{>core/url_select}}
+            <div class="navitem">
+                {{>core/url_select}}
+            </div>
         {{/urlselect}}
-        </div>
         {{#addoverride}}
-            <div class="col-sm-6">
+            <div class="navitem">
                 <a class="btn btn-primary" href="{{link}}">{{text}}</a>
             </div>
         {{/addoverride}}
     </div>
 </div>
+<h{{headinglevel}}>{{heading}}</h{{headinglevel}}>

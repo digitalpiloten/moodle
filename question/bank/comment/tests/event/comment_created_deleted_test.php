@@ -22,7 +22,6 @@ use comment;
 use context;
 use context_course;
 use core_question_generator;
-use question_edit_contexts;
 use stdClass;
 
 /**
@@ -33,7 +32,7 @@ use stdClass;
  * @author     Safat Shahin <safatshahin@catalyst-au.net>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class qbank_comment_comment_created_deleted_test extends advanced_testcase {
+class comment_created_deleted_test extends advanced_testcase {
 
     /** @var stdClass Keeps course object */
     private $course;
@@ -53,6 +52,7 @@ class qbank_comment_comment_created_deleted_test extends advanced_testcase {
     public function setUp(): void {
         global $CFG;
         require_once($CFG->dirroot . '/comment/lib.php');
+        parent::setUp();
 
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -66,7 +66,7 @@ class qbank_comment_comment_created_deleted_test extends advanced_testcase {
         $this->context = context_course::instance($this->course->id);
 
         // Create a question in the default category.
-        $contexts = new question_edit_contexts($this->context);
+        $contexts = new \core_question\local\bank\question_edit_contexts($this->context);
         $cat = question_make_default_categories($contexts->all());
         $this->questiondata = $questiongenerator->create_question('numerical', null,
                 ['name' => 'Example question', 'category' => $cat->id]);
@@ -92,7 +92,7 @@ class qbank_comment_comment_created_deleted_test extends advanced_testcase {
     /**
      * Test comment_created event.
      */
-    public function test_comment_created() {
+    public function test_comment_created(): void {
         // Triggering and capturing the event.
         $sink = $this->redirectEvents();
         $this->comment->add('New comment');
@@ -110,7 +110,7 @@ class qbank_comment_comment_created_deleted_test extends advanced_testcase {
     /**
      * Test comment_created event.
      */
-    public function test_comment_deleted() {
+    public function test_comment_deleted(): void {
         // Triggering and capturing the event.
         $newcomment = $this->comment->add('New comment to delete');
         $sink = $this->redirectEvents();

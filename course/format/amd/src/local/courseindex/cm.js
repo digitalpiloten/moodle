@@ -28,6 +28,7 @@ import DndCmItem from 'core_courseformat/local/courseeditor/dndcmitem';
 import Templates from 'core/templates';
 import Prefetch from 'core/prefetch';
 import Config from 'core/config';
+import Pending from "core/pending";
 
 // Prefetch the completion icons template.
 const completionTemplate = 'core_courseformat/local/courseindex/cmcompletion';
@@ -50,8 +51,9 @@ export default class Component extends DndCmItem {
         this.classes = {
             CMHIDDEN: 'dimmed',
             LOCKED: 'editinprogress',
-            RESTRICTIONS: 'rectrictions',
+            RESTRICTIONS: 'restrictions',
             PAGEITEM: 'pageitem',
+            INDENTED: 'indented',
         };
         // We need our id to watch specific events.
         this.id = this.element.dataset.id;
@@ -65,7 +67,7 @@ export default class Component extends DndCmItem {
      * @return {Component}
      */
     static init(target, selectors) {
-        return new Component({
+        return new this({
             element: document.getElementById(target),
             selectors,
         });
@@ -78,14 +80,33 @@ export default class Component extends DndCmItem {
      */
     stateReady(state) {
         this.configDragDrop(this.id);
+        const cm = state.cm.get(this.id);
+        const course = state.course;
         // Refresh completion icon.
         this._refreshCompletion({
             state,
-            element: state.cm.get(this.id),
+            element: cm,
         });
-        // Check if this we are displaying this activity id page.
+        const url = new URL(window.location.href);
+        const anchor = url.hash.replace('#', '');
+        // Check if the current url is the cm url.
+        if (window.location.href == cm.url
+            || (window.location.href.includes(course.baseurl) && anchor == cm.anchor)
+        ) {
+            this.element.scrollIntoView({block: "center"});
+        }
+        // Check if this we are displaying this activity page.
         if (Config.contextid != Config.courseContextId && Config.contextInstanceId == this.id) {
-            this.element.classList.add(this.classes.PAGEITEM);
+            this.reactive.dispatch('setPageItem', 'cm', this.id, true);
+            this.element.scrollIntoView({block: "center"});
+        }
+        // Add anchor logic if the element is not user visible or the element hasn't URL.
+        if (!cm.uservisible || !cm.url) {
+            this.addEventListener(
+                this.getElement(this.selectors.CM_NAME),
+                'click',
+                this._activityAnchor,
+            );
         }
     }
 
@@ -99,6 +120,7 @@ export default class Component extends DndCmItem {
             {watch: `cm[${this.id}]:deleted`, handler: this.remove},
             {watch: `cm[${this.id}]:updated`, handler: this._refreshCm},
             {watch: `cm[${this.id}].completionstate:updated`, handler: this._refreshCompletion},
+            {watch: `course.pageItem:updated`, handler: this._refreshPageItem},
         ];
     }
 
@@ -114,8 +136,26 @@ export default class Component extends DndCmItem {
         this.getElement(this.selectors.CM_NAME).innerHTML = element.name;
         this.element.classList.toggle(this.classes.DRAGGING, element.dragging ?? false);
         this.element.classList.toggle(this.classes.LOCKED, element.locked ?? false);
-        this.element.classList.toggle(this.classes.RESTRICTIONS, element.hascmrectrictions ?? false);
+        this.element.classList.toggle(this.classes.RESTRICTIONS, element.hascmrestrictions ?? false);
+        this.element.classList.toggle(this.classes.INDENTED, element.indent);
         this.locked = element.locked;
+    }
+
+    /**
+     * Handle a page item update.
+     *
+     * @param {Object} details the update details
+     * @param {Object} details.element the course state data.
+     */
+    _refreshPageItem({element}) {
+        if (!element.pageItem) {
+            return;
+        }
+        const isPageId = (element.pageItem.type == 'cm' && element.pageItem.id == this.id);
+        this.element.classList.toggle(this.classes.PAGEITEM, isPageId);
+        if (isPageId && !this.reactive.isEditing) {
+            this.element.scrollIntoView({block: "nearest"});
+        }
     }
 
     /**
@@ -132,7 +172,7 @@ export default class Component extends DndCmItem {
         }
         // Check if the completion value has changed.
         const completionElement = this.getElement(this.selectors.CM_COMPLETION);
-        if (completionElement.dataset.value == element.completionstate) {
+        if (!completionElement || completionElement.dataset.value == element.completionstate) {
             return;
         }
 
@@ -140,11 +180,39 @@ export default class Component extends DndCmItem {
         const exporter = this.reactive.getExporter();
         const data = exporter.cmCompletion(state, element);
 
-        try {
-            const {html, js} = await Templates.renderForPromise(completionTemplate, data);
-            Templates.replaceNode(completionElement, html, js);
-        } catch (error) {
-            throw error;
+        const {html, js} = await Templates.renderForPromise(completionTemplate, data);
+        Templates.replaceNode(completionElement, html, js);
+    }
+
+    /**
+     * The activity anchor event.
+     *
+     * @param {Event} event
+     */
+    _activityAnchor(event) {
+        const cm = this.reactive.get('cm', this.id);
+        // If the user cannot access the element but the element is present in the page
+        // the new url should be an anchor link.
+        const element = document.getElementById(cm.anchor);
+        if (element) {
+            // Make sure the section is expanded.
+            this.reactive.dispatch('sectionContentCollapsed', [cm.sectionid], false);
+            // Marc the element as page item once the event is handled.
+            const pendingAnchor = new Pending(`courseformat/activity:openAnchor`);
+            setTimeout(() => {
+                this.reactive.dispatch('setPageItem', 'cm', cm.id);
+                pendingAnchor.resolve();
+            }, 50);
+            return;
         }
+        // If the element is not present in the page we need to go to the specific section.
+        const course = this.reactive.get('course');
+        const section = this.reactive.get('section', cm.sectionid);
+        if (!section) {
+            return;
+        }
+        const url = `${course.baseurl}&section=${section.number}#${cm.anchor}`;
+        event.preventDefault();
+        window.location = url;
     }
 }

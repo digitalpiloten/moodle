@@ -16,12 +16,12 @@
 /**
  * JS for the mod_form page on mod_bigbluebuttonbn plugin.
  *
- * @module      mod_bigbluebuttonbn/mod_form
+ * @module      mod_bigbluebuttonbn/modform
  * @copyright   2021 Blindside Networks Inc
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {get_string as getString} from 'core/str';
+import {getString} from 'core/str';
 import Notification from 'core/notification';
 import Templates from "core/templates";
 
@@ -137,6 +137,12 @@ const applyInstanceTypeProfile = (profileType, isFeatureEnabled) => {
     // Show recordings imported settings validation.
     showInput('id_recordings_imported', showAll ||
         isFeatureEnabled(profileType, 'showrecordings'));
+    // Show lock settings validation.
+    showFieldset('id_lock', showAll ||
+        isFeatureEnabled(profileType, 'lock'));
+    // Show guest settings validation.
+    showFieldset('id_guestaccess', showAll ||
+        isFeatureEnabled(profileType, 'showroom'));
     // Preuploadpresentation feature validation.
     showFieldset('id_preuploadpresentation', showAll ||
         isFeatureEnabled(profileType, 'preuploadpresentation'));
@@ -184,7 +190,7 @@ const participantListInit = () => {
 };
 
 /**
- * Add rows to the participant list dependingon the current selection.
+ * Add rows to the participant list depending on the current selection.
  *
  * @param {string} selectionTypeValue
  * @param {string} selectionValue
@@ -296,8 +302,7 @@ const participantListRoleUpdate = (type, id) => {
     const pList = getParticipantList();
 
     for (var i = 0; i < pList.length; i++) {
-        if (pList[i].selectiontype === type &&
-            pList[i].selectionid === (id === '' ? null : parseInt(id))) {
+        if (pList[i].selectiontype === type && pList[i].selectionid === id) {
             pList[i].role = participantListRoleSelection.value;
         }
     }
@@ -359,9 +364,9 @@ const updateSelectionFromType = (currentTypeSelect) => {
 
         if (currentTypeSelect.value === 'all') {
             createNewOption(participantSelect, '---------------', 'all');
-            currentTypeSelect.disabled = true;
+            participantSelect.disabled = true;
         } else {
-            currentTypeSelect.disabled = false;
+            participantSelect.disabled = false;
         }
     }
 };

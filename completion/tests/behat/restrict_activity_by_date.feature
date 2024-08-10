@@ -10,7 +10,7 @@ Feature: Restrict activity availability through date conditions
       | Course 1 | C1        | 0        |
     And the following "users" exist:
       | username | firstname | lastname | email                |
-      | teacher1 | Teacher   | Frist    | teacher1@example.com |
+      | teacher1 | Teacher   | First    | teacher1@example.com |
       | student1 | Student   | First    | student1@example.com |
     And the following "course enrolments" exist:
       | user     | course | role           |
@@ -41,7 +41,6 @@ Feature: Restrict activity availability through date conditions
     When I am on the "Course 1" course page logged in as student1
     Then I should see "Available from 31 December 2037"
     And "Test assignment 1" "link" should not exist in the "page" "region"
-    And "Test assignment 1" activity should be dimmed
 
   @javascript
   Scenario: Show activity hidden to students when available until date is in past

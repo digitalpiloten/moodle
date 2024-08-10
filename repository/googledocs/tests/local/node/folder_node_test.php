@@ -28,7 +28,7 @@ require_once($CFG->dirroot . '/repository/googledocs/tests/repository_googledocs
  * @copyright  2021 Mihail Geshoski <mihail@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class folder_node_testcase extends \repository_googledocs_testcase {
+class folder_node_test extends \repository_googledocs_testcase {
 
     /**
      * Test create_node_array().
@@ -38,7 +38,7 @@ class folder_node_testcase extends \repository_googledocs_testcase {
      * @param string $path The current path
      * @param array $expected The expected repository folder node array
      */
-    public function test_create_node_array(\stdClass $gdfolder, string $path, array $expected) {
+    public function test_create_node_array(\stdClass $gdfolder, string $path, array $expected): void {
         $foldernode = new folder_node($gdfolder, $path);
         $foldernodearray = $foldernode->create_node_array();
         // Assert that the returned repository folder node array by create_node_array() is equal to the expected one.

@@ -50,8 +50,8 @@ $string['complete_the_form'] = 'Answer the questions';
 $string['completed'] = 'Completed';
 $string['completedon'] = 'Completed on {$a}';
 $string['completiondetail:submit'] = 'Submit feedback';
-$string['completionsubmit'] = 'View as completed if the feedback is submitted';
-$string['configallowfullanonymous'] = 'If set to \'yes\', users can complete a feedback activity on the front page without being required to log in.';
+$string['completionsubmit'] = 'Submit feedback';
+$string['configallowfullanonymous'] = 'If set to \'yes\', users can complete a feedback activity on the site home without being required to log in.';
 $string['confirmdeleteentry'] = 'Are you sure you want to delete this entry?';
 $string['confirmdeleteitem'] = 'Are you sure you want to delete this element?';
 $string['confirmdeletetemplate'] = 'Are you sure you want to delete this template?';
@@ -87,7 +87,7 @@ $string['depending_help'] = 'It is possible to show an item depending on the val
 $string['dependitem'] = 'Dependence item';
 $string['dependvalue'] = 'Dependence value';
 $string['description'] = 'Description';
-$string['do_not_analyse_empty_submits'] = 'Do not analyse empty submits';
+$string['do_not_analyse_empty_submits'] = 'Omit empty submits in analysis';
 $string['dropdown'] = 'Multiple choice - single answer allowed (drop-down menu)';
 $string['dropdownlist'] = 'Multiple choice - single answer (drop-down menu)';
 $string['dropdownrated'] = 'Drop-down menu (rated)';
@@ -159,7 +159,7 @@ $string['insufficient_responses'] = 'insufficient responses';
 $string['insufficient_responses_help'] = 'For the feedback to be anonymous, there must be at least 2 responses.';
 $string['item_label'] = 'Label';
 $string['item_name'] = 'Question';
-$string['label'] = 'Label';
+$string['label'] = 'Text and media area';
 $string['labelcontents'] = 'Contents';
 $string['mapcourseinfo'] = 'This is a site-wide feedback that is available to all courses using the feedback block. You can however limit the courses to which it will appear by mapping them. Search the course and map it to this feedback.';
 $string['mapcoursenone'] = 'No courses mapped. Feedback available to all courses';
@@ -175,9 +175,9 @@ $string['messageprovider:message'] = 'Feedback reminder';
 $string['messageprovider:submission'] = 'Feedback notifications';
 $string['mode'] = 'Mode';
 $string['modulename'] = 'Feedback';
-$string['modulename_help'] = 'The feedback activity module enables a teacher to create a custom survey for collecting feedback from participants using a variety of question types including multiple choice, yes/no or text input.
+$string['modulename_help'] = 'The feedback activity enables a teacher to create a custom survey for collecting feedback from participants using a variety of question types including multiple choice, yes/no or text input.
 
-Feedback responses may be anonymous if desired, and results may be shown to all participants or restricted to teachers only. Any feedback activities on the site front page may also be completed by non-logged-in users.
+Feedback responses may be anonymous if desired, and results may be shown to all participants or restricted to teachers only. Any feedback activities on the site home may also be completed by non-logged-in users.
 
 Feedback activities may be used
 
@@ -194,7 +194,10 @@ $string['multichoicerated'] = 'Multiple choice (rated)';
 $string['multichoicetype'] = 'Multiple choice type';
 $string['multichoice_values'] = 'Multiple choice values';
 $string['multiplesubmit'] = 'Allow multiple submissions';
-$string['multiplesubmit_help'] = 'If enabled for anonymous surveys, users can submit feedback an unlimited number of times.';
+$string['multiplesubmit_help'] = 'If set to Yes:
+
+* For anonymous surveys: participants can submit unlimited responses, and all responses will be recorded.
+* For non-anonymous surveys: participants can submit unlimited responses, but only their latest response will be recorded.';
 $string['name'] = 'Name';
 $string['name_required'] = 'Name required';
 $string['nameandlabelformat'] = '({$a->label}) {$a->name}';
@@ -246,7 +249,8 @@ $string['radio'] = 'Multiple choice - single answer';
 $string['radio_values'] = 'Responses';
 $string['ready_feedbacks'] = 'Ready feedbacks';
 $string['required'] = 'Required';
-$string['resetting_data'] = 'Reset feedback responses';
+$string['resetting_data'] = 'Responses';
+$string['resetting_delete'] = 'Delete responses';
 $string['resetting_feedbacks'] = 'Resetting feedbacks';
 $string['response_nr'] = 'Response number';
 $string['responses'] = 'Responses';

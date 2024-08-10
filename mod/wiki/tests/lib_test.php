@@ -23,6 +23,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since      Moodle 3.1
  */
+namespace mod_wiki;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -40,14 +41,14 @@ require_once($CFG->libdir . '/completionlib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since      Moodle 3.1
  */
-class mod_wiki_lib_testcase extends advanced_testcase {
+class lib_test extends \advanced_testcase {
 
     /**
      * Test wiki_view.
      *
      * @return void
      */
-    public function test_wiki_view() {
+    public function test_wiki_view(): void {
         global $CFG;
 
         $CFG->enablecompletion = COMPLETION_ENABLED;
@@ -58,7 +59,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $course = $this->getDataGenerator()->create_course(array('enablecompletion' => COMPLETION_ENABLED));
         $options = array('completion' => COMPLETION_TRACKING_AUTOMATIC, 'completionview' => COMPLETION_VIEW_REQUIRED);
         $wiki = $this->getDataGenerator()->create_module('wiki', array('course' => $course->id), $options);
-        $context = context_module::instance($wiki->cmid);
+        $context = \context_module::instance($wiki->cmid);
         $cm = get_coursemodule_from_instance('wiki', $wiki->id);
 
         // Trigger and capture the event.
@@ -80,7 +81,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $this->assertNotEmpty($event->get_name());
 
         // Check completion status.
-        $completion = new completion_info($course);
+        $completion = new \completion_info($course);
         $completiondata = $completion->get_data($cm);
         $this->assertEquals(1, $completiondata->completionstate);
 
@@ -91,7 +92,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
      *
      * @return void
      */
-    public function test_wiki_page_view() {
+    public function test_wiki_page_view(): void {
         global $CFG;
 
         $CFG->enablecompletion = COMPLETION_ENABLED;
@@ -102,7 +103,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $course = $this->getDataGenerator()->create_course(array('enablecompletion' => COMPLETION_ENABLED));
         $options = array('completion' => COMPLETION_TRACKING_AUTOMATIC, 'completionview' => COMPLETION_VIEW_REQUIRED);
         $wiki = $this->getDataGenerator()->create_module('wiki', array('course' => $course->id), $options);
-        $context = context_module::instance($wiki->cmid);
+        $context = \context_module::instance($wiki->cmid);
         $cm = get_coursemodule_from_instance('wiki', $wiki->id);
         $firstpage = $this->getDataGenerator()->get_plugin_generator('mod_wiki')->create_first_page($wiki);
 
@@ -125,7 +126,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $this->assertNotEmpty($event->get_name());
 
         // Check completion status.
-        $completion = new completion_info($course);
+        $completion = new \completion_info($course);
         $completiondata = $completion->get_data($cm);
         $this->assertEquals(1, $completiondata->completionstate);
 
@@ -136,7 +137,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
      *
      * @return void
      */
-    public function test_wiki_user_can_edit() {
+    public function test_wiki_user_can_edit(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -158,7 +159,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $this->getDataGenerator()->enrol_user($teacher->id, $course->id, $teacherrole->id, 'manual');
 
         // Simulate collaborative subwiki.
-        $swcol = new stdClass();
+        $swcol = new \stdClass();
         $swcol->id = -1;
         $swcol->wikiid = $colwiki->id;
         $swcol->groupid = 0;
@@ -202,7 +203,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
      *
      * @return void
      */
-    public function test_wiki_user_can_edit_with_groups_collaborative() {
+    public function test_wiki_user_can_edit_with_groups_collaborative(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -236,7 +237,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
 
         // Simulate all the possible subwikis.
         // Subwikis in collaborative wikis: 1 subwiki per group + 1 subwiki for all participants.
-        $swsepcolg1 = new stdClass();
+        $swsepcolg1 = new \stdClass();
         $swsepcolg1->id = -1;
         $swsepcolg1->wikiid = $wikisepcol->id;
         $swsepcolg1->groupid = $group1->id;
@@ -297,7 +298,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
      *
      * @return void
      */
-    public function test_wiki_user_can_edit_with_groups_individual() {
+    public function test_wiki_user_can_edit_with_groups_individual(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -331,7 +332,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
 
         // Simulate all the possible subwikis.
         // Subwikis in collaborative wikis: 1 subwiki per group + 1 subwiki for all participants.
-        $swsepindg1s1 = new stdClass();
+        $swsepindg1s1 = new \stdClass();
         $swsepindg1s1->id = -1;
         $swsepindg1s1->wikiid = $wikisepind->id;
         $swsepindg1s1->groupid = $group1->id;
@@ -398,7 +399,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
      *
      * @return void
      */
-    public function test_wiki_get_visible_subwikis_without_groups() {
+    public function test_wiki_get_visible_subwikis_without_groups(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -427,7 +428,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
 
         // Check that the student can get the only subwiki from the collaborative wiki.
         $expectedsubwikis = array();
-        $expectedsubwiki = new stdClass();
+        $expectedsubwiki = new \stdClass();
         $expectedsubwiki->id = -1; // We haven't created any page so the subwiki hasn't been created.
         $expectedsubwiki->wikiid = $colwiki->id;
         $expectedsubwiki->groupid = 0;
@@ -460,7 +461,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
 
         // Check that the teacher can see his subwiki and the student subwiki in the individual wiki.
         $this->setUser($teacher);
-        $teachersubwiki = new stdClass();
+        $teachersubwiki = new \stdClass();
         $teachersubwiki->id = -1;
         $teachersubwiki->wikiid = $indwiki->id;
         $teachersubwiki->groupid = 0;
@@ -476,7 +477,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
      *
      * @return void
      */
-    public function test_wiki_get_visible_subwikis_with_groups_collaborative() {
+    public function test_wiki_get_visible_subwikis_with_groups_collaborative(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -515,7 +516,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
 
         // Create all the possible subwikis. We haven't created any page so ids will be -1.
         // Subwikis in collaborative wikis: 1 subwiki per group + 1 subwiki for all participants.
-        $swsepcolg1 = new stdClass();
+        $swsepcolg1 = new \stdClass();
         $swsepcolg1->id = -1;
         $swsepcolg1->wikiid = $wikisepcol->id;
         $swsepcolg1->groupid = $group1->id;
@@ -560,7 +561,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
      *
      * @return void
      */
-    public function test_wiki_get_visible_subwikis_with_groups_individual() {
+    public function test_wiki_get_visible_subwikis_with_groups_individual(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -599,7 +600,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
 
         // Create all the possible subwikis to be returned. We haven't created any page so ids will be -1.
         // Subwikis in individual wikis: 1 subwiki per user and group. If user doesn't belong to any group then groupid is 0.
-        $swsepindg1s1 = new stdClass();
+        $swsepindg1s1 = new \stdClass();
         $swsepindg1s1->id = -1;
         $swsepindg1s1->wikiid = $wikisepind->id;
         $swsepindg1s1->groupid = $group1->id;
@@ -655,7 +656,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $this->assertEqualsCanonicalizing($expectedsubwikis, $result);
     }
 
-    public function test_mod_wiki_get_tagged_pages() {
+    public function test_mod_wiki_get_tagged_pages(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -679,7 +680,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $page23 = $wikigenerator->create_content($wiki2, array('tags' => array('mice', 'Cats')));
         $page31 = $wikigenerator->create_content($wiki3, array('tags' => array('mice', 'Cats')));
 
-        $tag = core_tag_tag::get_by_name(0, 'Cats');
+        $tag = \core_tag_tag::get_by_name(0, 'Cats');
 
         // Admin can see everything.
         $res = mod_wiki_get_tagged_pages($tag, /*$exclusivemode = */false,
@@ -715,7 +716,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $this->getDataGenerator()->enrol_user($student->id, $course1->id, $studentrole->id, 'manual');
         $this->getDataGenerator()->enrol_user($student->id, $course2->id, $studentrole->id, 'manual');
         $this->setUser($student);
-        core_tag_index_builder::reset_caches();
+        \core_tag_index_builder::reset_caches();
 
         // User can not see pages in course 3 because he is not enrolled.
         $res = mod_wiki_get_tagged_pages($tag, /*$exclusivemode = */false,
@@ -725,7 +726,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $this->assertDoesNotMatchRegularExpression('/'.$page31->title.'/', $res->content);
 
         // User can search wiki pages inside a course.
-        $coursecontext = context_course::instance($course1->id);
+        $coursecontext = \context_course::instance($course1->id);
         $res = mod_wiki_get_tagged_pages($tag, /*$exclusivemode = */false,
                 /*$fromctx = */0, /*$ctx = */$coursecontext->id, /*$rec = */1, /*$page = */0);
         $this->assertMatchesRegularExpression('/'.$page11->title.'/', $res->content);
@@ -739,7 +740,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $this->assertEmpty($res->nextpageurl);
     }
 
-    public function test_wiki_core_calendar_provide_event_action() {
+    public function test_wiki_core_calendar_provide_event_action(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -765,7 +766,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $this->assertTrue($actionevent->is_actionable());
     }
 
-    public function test_wiki_core_calendar_provide_event_action_for_non_user() {
+    public function test_wiki_core_calendar_provide_event_action_for_non_user(): void {
         global $CFG;
 
         $this->resetAfterTest();
@@ -793,7 +794,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $this->assertNull($actionevent);
     }
 
-    public function test_wiki_core_calendar_provide_event_action_for_user() {
+    public function test_wiki_core_calendar_provide_event_action_for_user(): void {
         global $CFG;
 
         $this->resetAfterTest();
@@ -826,7 +827,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $this->assertTrue($actionevent->is_actionable());
     }
 
-    public function test_wiki_core_calendar_provide_event_action_already_completed() {
+    public function test_wiki_core_calendar_provide_event_action_already_completed(): void {
         global $CFG;
 
         $this->resetAfterTest();
@@ -847,7 +848,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
             \core_completion\api::COMPLETION_EVENT_TYPE_DATE_COMPLETION_EXPECTED);
 
         // Mark the activity as completed.
-        $completion = new completion_info($course);
+        $completion = new \completion_info($course);
         $completion->set_module_viewed($cm);
 
         // Create an action factory.
@@ -860,7 +861,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $this->assertNull($actionevent);
     }
 
-    public function test_wiki_core_calendar_provide_event_action_already_completed_for_user() {
+    public function test_wiki_core_calendar_provide_event_action_already_completed_for_user(): void {
         global $CFG;
 
         $this->resetAfterTest();
@@ -885,7 +886,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
                 \core_completion\api::COMPLETION_EVENT_TYPE_DATE_COMPLETION_EXPECTED);
 
         // Mark the activity as completed for the $student1.
-        $completion = new completion_info($course);
+        $completion = new \completion_info($course);
         $completion->set_module_viewed($cm, $student1->id);
 
         // Now log in as $student2.
@@ -910,7 +911,7 @@ class mod_wiki_lib_testcase extends advanced_testcase {
      * @return bool|calendar_event
      */
     private function create_action_event($courseid, $instanceid, $eventtype) {
-        $event = new stdClass();
+        $event = new \stdClass();
         $event->name = 'Calendar event';
         $event->modulename  = 'wiki';
         $event->courseid = $courseid;
@@ -919,6 +920,6 @@ class mod_wiki_lib_testcase extends advanced_testcase {
         $event->eventtype = $eventtype;
         $event->timestart = time();
 
-        return calendar_event::create($event);
+        return \calendar_event::create($event);
     }
 }

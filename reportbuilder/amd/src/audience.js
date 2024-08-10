@@ -23,10 +23,12 @@
 
 "use strict";
 
+import 'core/inplace_editable';
 import Templates from 'core/templates';
 import Notification from 'core/notification';
 import Pending from 'core/pending';
-import {get_string as getString, get_strings as getStrings} from 'core/str';
+import {prefetchStrings} from 'core/prefetch';
+import {getString} from 'core/str';
 import DynamicForm from 'core_form/dynamicform';
 import {add as addToast} from 'core/toast';
 import {deleteAudience} from 'core_reportbuilder/local/repository/audiences';
@@ -82,15 +84,9 @@ const addAudienceCard = (className, title) => {
 const editAudienceCard = audienceCard => {
     const pendingPromise = new Pending('core_reportbuilder/audience:edit');
 
-    const audienceForm = initAudienceCardForm(audienceCard);
-    const audienceFormData = {
-        reportid: reportId,
-        id: audienceCard.dataset.instanceid,
-        classname: audienceCard.dataset.classname
-    };
-
     // Load audience form with data for editing, then toggle visible controls in the card.
-    audienceForm.load(audienceFormData)
+    const audienceForm = initAudienceCardForm(audienceCard);
+    audienceForm.load({id: audienceCard.dataset.audienceId})
         .then(() => {
             const audienceFormContainer = audienceCard.querySelector(reportSelectors.regions.audienceFormContainer);
             const audienceDescription = audienceCard.querySelector(reportSelectors.regions.audienceDescription);
@@ -117,9 +113,12 @@ const initAudienceCardForm = audienceCard => {
 
     // After submitting the form, update the card instance and description properties.
     audienceForm.addEventListener(audienceForm.events.FORM_SUBMITTED, data => {
+        const audienceHeading = audienceCard.querySelector(reportSelectors.regions.audienceHeading);
         const audienceDescription = audienceCard.querySelector(reportSelectors.regions.audienceDescription);
 
-        audienceCard.dataset.instanceid = data.detail.instanceid;
+        audienceCard.dataset.audienceId = data.detail.instanceid;
+
+        audienceHeading.innerHTML = data.detail.heading;
         audienceDescription.innerHTML = data.detail.description;
 
         closeAudienceCardForm(audienceCard);
@@ -130,7 +129,7 @@ const initAudienceCardForm = audienceCard => {
 
     // If cancelling the form, close the card or remove it if it was never created.
     audienceForm.addEventListener(audienceForm.events.FORM_CANCELLED, () => {
-        if (audienceCard.dataset.instanceid > 0) {
+        if (audienceCard.dataset.audienceId > 0) {
             closeAudienceCardForm(audienceCard);
         } else {
             removeAudienceCard(audienceCard);
@@ -143,30 +142,33 @@ const initAudienceCardForm = audienceCard => {
 /**
  * Delete audience card
  *
- * @param {Element} audienceCard
+ * @param {Element} audienceDelete
  */
-const deleteAudienceCard = audienceCard => {
-    const audienceTitle = audienceCard.dataset.title;
+const deleteAudienceCard = audienceDelete => {
+    const audienceCard = audienceDelete.closest(reportSelectors.regions.audienceCard);
+    const {audienceId, audienceTitle, audienceEditWarning = false} = audienceCard.dataset;
 
-    getStrings([
-        {key: 'deleteaudience', component: 'core_reportbuilder', param: audienceTitle},
-        {key: 'deleteaudienceconfirm', component: 'core_reportbuilder', param: audienceTitle},
-        {key: 'delete', component: 'moodle'},
-    ]).then(([confirmTitle, confirmText, confirmButton]) => {
-        Notification.confirm(confirmTitle, confirmText, confirmButton, null, () => {
-            const pendingPromise = new Pending('core_reportbuilder/audience:delete');
+    // The edit warning indicates the audience is in use in a report schedule.
+    const audienceDeleteConfirmation = audienceEditWarning ? 'audienceusedbyschedule' : 'deleteaudienceconfirm';
 
-            deleteAudience(reportId, audienceCard.dataset.instanceid)
-                .then(() => getString('audiencedeleted', 'core_reportbuilder', audienceTitle))
-                .then(addToast)
-                .then(() => {
-                    removeAudienceCard(audienceCard);
-                    return pendingPromise.resolve();
-                })
-                .catch(Notification.exception);
-        });
+    Notification.saveCancelPromise(
+        getString('deleteaudience', 'core_reportbuilder', audienceTitle),
+        getString(audienceDeleteConfirmation, 'core_reportbuilder', audienceTitle),
+        getString('delete', 'core'),
+        {triggerElement: audienceDelete}
+    ).then(() => {
+        const pendingPromise = new Pending('core_reportbuilder/audience:delete');
+
+        return deleteAudience(reportId, audienceId)
+            .then(() => addToast(getString('audiencedeleted', 'core_reportbuilder', audienceTitle)))
+            .then(() => {
+                removeAudienceCard(audienceCard);
+                return pendingPromise.resolve();
+            })
+            .catch(Notification.exception);
+    }).catch(() => {
         return;
-    }).catch(Notification.exception);
+    });
 };
 
 /**
@@ -215,6 +217,19 @@ let initialized = false;
  * @param {Number} contextid
  */
 export const init = (id, contextid) => {
+    prefetchStrings('core_reportbuilder', [
+        'audienceadded',
+        'audiencedeleted',
+        'audiencesaved',
+        'audienceusedbyschedule',
+        'deleteaudience',
+        'deleteaudienceconfirm',
+    ]);
+
+    prefetchStrings('core', [
+        'delete',
+    ]);
+
     reportId = id;
     contextId = contextid;
 
@@ -244,10 +259,8 @@ export const init = (id, contextid) => {
         // Delete instance.
         const audienceDelete = event.target.closest(reportSelectors.actions.audienceDelete);
         if (audienceDelete) {
-            const audienceDeleteCard = audienceDelete.closest(reportSelectors.regions.audienceCard);
-
             event.preventDefault();
-            deleteAudienceCard(audienceDeleteCard);
+            deleteAudienceCard(audienceDelete);
         }
     });
 

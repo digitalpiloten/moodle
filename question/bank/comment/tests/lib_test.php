@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace qbank_comment;
+
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
@@ -28,12 +30,12 @@ require_once($CFG->dirroot . '/question/bank/comment/lib.php');
  * @author     Matt Porritt <mattp@catalyst-au.net>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class qbank_comment_lib_test extends \advanced_testcase {
+class lib_test extends \advanced_testcase {
 
     /**
      * Test the comment validation callback.
      */
-    public function test_qbank_comment_comment_validate() {
+    public function test_qbank_comment_comment_validate(): void {
         $commentparams = new \stdClass();
         $commentparams->commentarea = 'question';
         $commentparams->component = 'qbank_comment';
@@ -51,7 +53,7 @@ class qbank_comment_lib_test extends \advanced_testcase {
     /**
      * Test the comment display callback.
      */
-    public function test_qbank_comment_comment_display() {
+    public function test_qbank_comment_comment_display(): void {
         $comment = new \stdClass();
         $comment->text = 'test';
         $comments = [$comment];
@@ -73,7 +75,7 @@ class qbank_comment_lib_test extends \advanced_testcase {
     /**
      * Test the comment preview callback.
      */
-    public function test_qbank_comment_preview_display() {
+    public function test_qbank_comment_preview_display(): void {
         $this->resetAfterTest();
         global $PAGE;
         $PAGE->set_url('/');
@@ -82,7 +84,7 @@ class qbank_comment_lib_test extends \advanced_testcase {
         $category = $this->getDataGenerator()->create_category();
         $course = $this->getDataGenerator()->create_course(['category' => $category->id]);
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
-        $context = context_coursecat::instance($category->id);
+        $context = \context_coursecat::instance($category->id);
         $qcat = $qgen->create_question_category(['contextid' => $context->id]);
         $question = $qgen->create_question('shortanswer', null, ['category' => $qcat->id, 'idnumber' => 'q1']);
 
@@ -100,7 +102,7 @@ class qbank_comment_lib_test extends \advanced_testcase {
     /**
      * Test the comment preview callback.
      */
-    public function test_qbank_comment_output_fragment_question_comment() {
+    public function test_qbank_comment_output_fragment_question_comment(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
         global $PAGE;
@@ -110,7 +112,7 @@ class qbank_comment_lib_test extends \advanced_testcase {
         $category = $this->getDataGenerator()->create_category();
         $course = $this->getDataGenerator()->create_course(['category' => $category->id]);
         $qgen = $this->getDataGenerator()->get_plugin_generator('core_question');
-        $context = context_coursecat::instance($category->id);
+        $context = \context_coursecat::instance($category->id);
         $qcat = $qgen->create_question_category(['contextid' => $context->id]);
         $question = $qgen->create_question('shortanswer', null, ['category' => $qcat->id, 'idnumber' => 'q1']);
         $args = [

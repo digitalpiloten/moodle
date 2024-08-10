@@ -21,6 +21,7 @@
  * @copyright  2015 Frédéric Massart - FMCorz.net
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+namespace mod_glossary;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -35,9 +36,9 @@ require_once($CFG->dirroot . '/mod/glossary/locallib.php');
  * @copyright  2015 Frédéric Massart - FMCorz.net
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class mod_glossary_lib_testcase extends advanced_testcase {
+class lib_test extends \advanced_testcase {
 
-    public function test_glossary_view() {
+    public function test_glossary_view(): void {
         global $CFG;
         $origcompletion = $CFG->enablecompletion;
         $CFG->enablecompletion = true;
@@ -57,11 +58,11 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         ));
         $u1 = $this->getDataGenerator()->create_user();
         $this->getDataGenerator()->enrol_user($u1->id, $c1->id);
-        $modinfo = course_modinfo::instance($c1->id);
+        $modinfo = \course_modinfo::instance($c1->id);
         $cm1 = $modinfo->get_cm($g1->cmid);
         $cm2 = $modinfo->get_cm($g2->cmid);
         $ctx1 = $cm1->context;
-        $completion = new completion_info($c1);
+        $completion = new \completion_info($c1);
 
         $this->setUser($u1);
 
@@ -93,7 +94,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $CFG->enablecompletion = $origcompletion;
     }
 
-    public function test_glossary_entry_view() {
+    public function test_glossary_entry_view(): void {
         $this->resetAfterTest(true);
 
         // Generate all the things.
@@ -102,7 +103,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $g1 = $this->getDataGenerator()->create_module('glossary', array('course' => $c1->id));
         $e1 = $gg->create_content($g1);
         $u1 = $this->getDataGenerator()->create_user();
-        $ctx = context_module::instance($g1->cmid);
+        $ctx = \context_module::instance($g1->cmid);
         $this->getDataGenerator()->enrol_user($u1->id, $c1->id);
 
         // Assertions.
@@ -115,7 +116,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $sink->close();
     }
 
-    public function test_glossary_core_calendar_provide_event_action() {
+    public function test_glossary_core_calendar_provide_event_action(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -141,7 +142,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $this->assertTrue($actionevent->is_actionable());
     }
 
-    public function test_glossary_core_calendar_provide_event_action_as_non_user() {
+    public function test_glossary_core_calendar_provide_event_action_as_non_user(): void {
         global $CFG;
 
         $this->resetAfterTest();
@@ -169,7 +170,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $this->assertNull($actionevent);
     }
 
-    public function test_glossary_core_calendar_provide_event_action_for_user() {
+    public function test_glossary_core_calendar_provide_event_action_for_user(): void {
         global $CFG;
 
         $this->resetAfterTest();
@@ -206,7 +207,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $this->assertTrue($actionevent->is_actionable());
     }
 
-    public function test_glossary_core_calendar_provide_event_action_in_hidden_section() {
+    public function test_glossary_core_calendar_provide_event_action_in_hidden_section(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -236,7 +237,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $this->assertNull($actionevent);
     }
 
-    public function test_glossary_core_calendar_provide_event_action_already_completed() {
+    public function test_glossary_core_calendar_provide_event_action_already_completed(): void {
         global $CFG;
 
         $this->resetAfterTest();
@@ -257,7 +258,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
             \core_completion\api::COMPLETION_EVENT_TYPE_DATE_COMPLETION_EXPECTED);
 
         // Mark the activity as completed.
-        $completion = new completion_info($course);
+        $completion = new \completion_info($course);
         $completion->set_module_viewed($cm);
 
         // Create an action factory.
@@ -270,7 +271,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $this->assertNull($actionevent);
     }
 
-    public function test_glossary_core_calendar_provide_event_action_already_completed_for_user() {
+    public function test_glossary_core_calendar_provide_event_action_already_completed_for_user(): void {
         global $CFG;
 
         $this->resetAfterTest();
@@ -296,7 +297,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
                 \core_completion\api::COMPLETION_EVENT_TYPE_DATE_COMPLETION_EXPECTED);
 
         // Mark the activity as completed for the user.
-        $completion = new completion_info($course);
+        $completion = new \completion_info($course);
         $completion->set_module_viewed($cm, $student->id);
 
         // Create an action factory.
@@ -318,7 +319,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
      * @return bool|calendar_event
      */
     private function create_action_event($courseid, $instanceid, $eventtype) {
-        $event = new stdClass();
+        $event = new \stdClass();
         $event->name = 'Calendar event';
         $event->modulename  = 'glossary';
         $event->courseid = $courseid;
@@ -327,7 +328,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $event->eventtype = $eventtype;
         $event->timestart = time();
 
-        return calendar_event::create($event);
+        return \calendar_event::create($event);
     }
 
     /**
@@ -335,7 +336,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
      * This function should work given either an instance of the module (cm_info), such as when checking the active rules,
      * or if passed a stdClass of similar structure, such as when checking the the default completion settings for a mod type.
      */
-    public function test_mod_glossary_completion_get_active_rule_descriptions() {
+    public function test_mod_glossary_completion_get_active_rule_descriptions(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -351,13 +352,13 @@ class mod_glossary_lib_testcase extends advanced_testcase {
             'completion' => 2,
             'completionentries' => 0
         ]);
-        $cm1 = cm_info::create(get_coursemodule_from_instance('glossary', $glossary1->id));
-        $cm2 = cm_info::create(get_coursemodule_from_instance('glossary', $glossary2->id));
+        $cm1 = \cm_info::create(get_coursemodule_from_instance('glossary', $glossary1->id));
+        $cm2 = \cm_info::create(get_coursemodule_from_instance('glossary', $glossary2->id));
 
         // Data for the stdClass input type.
         // This type of input would occur when checking the default completion rules for an activity type, where we don't have
         // any access to cm_info, rather the input is a stdClass containing completion and customdata attributes, just like cm_info.
-        $moddefaults = new stdClass();
+        $moddefaults = new \stdClass();
         $moddefaults->customdata = ['customcompletionrules' => ['completionentries' => 3]];
         $moddefaults->completion = 2;
 
@@ -365,10 +366,10 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $this->assertEquals(mod_glossary_get_completion_active_rule_descriptions($cm1), $activeruledescriptions);
         $this->assertEquals(mod_glossary_get_completion_active_rule_descriptions($cm2), []);
         $this->assertEquals(mod_glossary_get_completion_active_rule_descriptions($moddefaults), $activeruledescriptions);
-        $this->assertEquals(mod_glossary_get_completion_active_rule_descriptions(new stdClass()), []);
+        $this->assertEquals(mod_glossary_get_completion_active_rule_descriptions(new \stdClass()), []);
     }
 
-    public function test_mod_glossary_get_tagged_entries() {
+    public function test_mod_glossary_get_tagged_entries(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -402,7 +403,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $entry23 = $glossarygenerator->create_content($glossary2, array('tags' => array('mice', 'Cats')));
         $entry31 = $glossarygenerator->create_content($glossary3, array('tags' => array('mice', 'Cats')));
 
-        $tag = core_tag_tag::get_by_name(0, 'Cats');
+        $tag = \core_tag_tag::get_by_name(0, 'Cats');
 
         // Admin can see everything.
         // Get first page of tagged entries (first 5 entries).
@@ -439,7 +440,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $this->assertEmpty($res->nextpageurl);
 
         $this->setUser($student);
-        core_tag_index_builder::reset_caches();
+        \core_tag_index_builder::reset_caches();
 
         // User can not see entries in course 3 because he is not enrolled.
         $res = mod_glossary_get_tagged_entries($tag, /*$exclusivemode = */false,
@@ -449,7 +450,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $this->assertDoesNotMatchRegularExpression('/'.$entry31->concept.'/', $res->content);
 
         // User can search glossary entries inside a course.
-        $coursecontext = context_course::instance($course1->id);
+        $coursecontext = \context_course::instance($course1->id);
         $res = mod_glossary_get_tagged_entries($tag, /*$exclusivemode = */false,
             /*$fromctx = */0, /*$ctx = */$coursecontext->id, /*$rec = */1, /*$entry = */0);
         $this->assertMatchesRegularExpression('/'.$entry11->concept.'/', $res->content);
@@ -467,7 +468,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $this->assertMatchesRegularExpression('/'.$entry17->concept.'/', $res->content);
     }
 
-    public function test_glossary_get_entries_search() {
+    public function test_glossary_get_entries_search(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
         // Turn on glossary autolinking (usedynalink).
@@ -504,7 +505,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $this->assertCount(0, $search);
     }
 
-    public function test_mod_glossary_can_delete_entry_users() {
+    public function test_mod_glossary_can_delete_entry_users(): void {
         $this->resetAfterTest();
 
         // Create required data.
@@ -517,7 +518,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $gg = $this->getDataGenerator()->get_plugin_generator('mod_glossary');
         $this->setUser($student);
         $entry = $gg->create_content($glossary);
-        $context = context_module::instance($glossary->cmid);
+        $context = \context_module::instance($glossary->cmid);
 
         // Test student can delete.
         $this->assertTrue(mod_glossary_can_delete_entry($entry, $glossary, $context));
@@ -539,7 +540,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         mod_glossary_can_delete_entry($entry, $glossary, $context, false);
     }
 
-    public function test_mod_glossary_can_delete_entry_edit_period() {
+    public function test_mod_glossary_can_delete_entry_edit_period(): void {
         global $CFG;
         $this->resetAfterTest();
 
@@ -551,7 +552,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $gg = $this->getDataGenerator()->get_plugin_generator('mod_glossary');
         $this->setUser($student);
         $entry = $gg->create_content($glossary);
-        $context = context_module::instance($glossary->cmid);
+        $context = \context_module::instance($glossary->cmid);
 
         // Test student can always delete when edit always is set to 1.
         $entry->timecreated = time() - 2 * $CFG->maxeditingtime;
@@ -571,7 +572,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         mod_glossary_can_delete_entry($entry, $glossary, $context, false);
     }
 
-    public function test_mod_glossary_delete_entry() {
+    public function test_mod_glossary_delete_entry(): void {
         global $DB, $CFG;
         $this->resetAfterTest();
         require_once($CFG->dirroot . '/rating/lib.php');
@@ -581,13 +582,13 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $student1 = $this->getDataGenerator()->create_and_enrol($course, 'student');
         $student2 = $this->getDataGenerator()->create_and_enrol($course, 'student');
 
-        $record = new stdClass();
+        $record = new \stdClass();
         $record->course = $course->id;
         $record->assessed = RATING_AGGREGATE_AVERAGE;
         $scale = $this->getDataGenerator()->create_scale(['scale' => 'A,B,C,D']);
         $record->scale = "-$scale->id";
         $glossary = $this->getDataGenerator()->create_module('glossary', $record);
-        $context = context_module::instance($glossary->cmid);
+        $context = \context_module::instance($glossary->cmid);
         $cm = get_coursemodule_from_instance('glossary', $glossary->id);
 
         $gg = $this->getDataGenerator()->get_plugin_generator('mod_glossary');
@@ -601,7 +602,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         );
 
         // Rate the entry as user2.
-        $rating1 = new stdClass();
+        $rating1 = new \stdClass();
         $rating1->contextid = $context->id;
         $rating1->component = 'mod_glossary';
         $rating1->ratingarea = 'entry';
@@ -627,10 +628,10 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $this->assertEquals(0, $DB->count_records('glossary_entries', ['id' => $entry->id]));
         $this->assertEquals(0, $DB->count_records('glossary_alias', ['entryid' => $entry->id]));
         $this->assertEquals(0, $DB->count_records('rating', ['component' => 'mod_glossary', 'itemid' => $entry->id]));
-        $this->assertEmpty(core_tag_tag::get_by_name(0, 'Cats'));
+        $this->assertEmpty(\core_tag_tag::get_by_name(0, 'Cats'));
     }
 
-    public function test_mod_glossary_delete_entry_imported() {
+    public function test_mod_glossary_delete_entry_imported(): void {
         global $DB;
         $this->resetAfterTest();
 
@@ -641,7 +642,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $glossary1 = $this->getDataGenerator()->create_module('glossary', ['course' => $course->id]);
         $glossary2 = $this->getDataGenerator()->create_module('glossary', ['course' => $course->id]);
 
-        $context = context_module::instance($glossary2->cmid);
+        $context = \context_module::instance($glossary2->cmid);
         $cm = get_coursemodule_from_instance('glossary', $glossary2->id);
 
         $gg = $this->getDataGenerator()->get_plugin_generator('mod_glossary');
@@ -668,10 +669,10 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $this->assertEquals($glossary1->id, $DB->get_field('glossary_entries', 'glossaryid', ['id' => $entry2->id]));
 
         // Tags.
-        $this->assertEmpty(core_tag_tag::get_by_name(0, 'Cats'));
+        $this->assertEmpty(\core_tag_tag::get_by_name(0, 'Cats'));
     }
 
-    public function test_mod_glossary_can_update_entry_users() {
+    public function test_mod_glossary_can_update_entry_users(): void {
         $this->resetAfterTest();
 
         // Create required data.
@@ -684,7 +685,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $gg = $this->getDataGenerator()->get_plugin_generator('mod_glossary');
         $this->setUser($student);
         $entry = $gg->create_content($glossary);
-        $context = context_module::instance($glossary->cmid);
+        $context = \context_module::instance($glossary->cmid);
         $cm = get_coursemodule_from_instance('glossary', $glossary->id);
 
         // Test student can update.
@@ -707,7 +708,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         mod_glossary_can_update_entry($entry, $glossary, $context, $cm, false);
     }
 
-    public function test_mod_glossary_can_update_entry_edit_period() {
+    public function test_mod_glossary_can_update_entry_edit_period(): void {
         global $CFG;
         $this->resetAfterTest();
 
@@ -719,7 +720,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         $gg = $this->getDataGenerator()->get_plugin_generator('mod_glossary');
         $this->setUser($student);
         $entry = $gg->create_content($glossary);
-        $context = context_module::instance($glossary->cmid);
+        $context = \context_module::instance($glossary->cmid);
         $cm = get_coursemodule_from_instance('glossary', $glossary->id);
 
         // Test student can always update when edit always is set to 1.
@@ -740,7 +741,7 @@ class mod_glossary_lib_testcase extends advanced_testcase {
         mod_glossary_can_update_entry($entry, $glossary, $context, $cm, false);
     }
 
-    public function test_prepare_entry_for_edition() {
+    public function test_prepare_entry_for_edition(): void {
         global $USER;
         $this->resetAfterTest(true);
 

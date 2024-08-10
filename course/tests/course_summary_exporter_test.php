@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace tests\core_course;
+namespace core_course;
 
 use core_course\external\course_summary_exporter;
 use context_user;
@@ -29,12 +29,12 @@ use context_course;
  * @copyright  2021 Catalyst IT
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class course_summary_exporter_testcase extends \advanced_testcase {
+class course_summary_exporter_test extends \advanced_testcase {
 
     /**
      * Test that if no course overview images uploaded get_course_image returns false.
      */
-    public function test_get_course_image_when_no_overview_images_uploaded() {
+    public function test_get_course_image_when_no_overview_images_uploaded(): void {
         $this->resetAfterTest(true);
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
@@ -45,7 +45,7 @@ class course_summary_exporter_testcase extends \advanced_testcase {
     /**
      * Test that if course overview images uploaded get_course_image returns an image URL.
      */
-    public function test_get_course_image_when_overview_images_are_uploaded() {
+    public function test_get_course_image_when_overview_images_are_uploaded(): void {
         global $USER;
 
         $this->resetAfterTest(true);

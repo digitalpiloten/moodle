@@ -55,7 +55,7 @@ class files_test extends \advanced_testcase {
     /**
      * Plugin valid test case
      */
-    public function test_pluginfile_valid() {
+    public function test_pluginfile_valid(): void {
         $this->resetAfterTest();
         $this->assertFalse(files::pluginfile_valid(context_course::instance($this->get_course()->id), 'presentation'));
         $this->assertTrue(files::pluginfile_valid(context_system::instance(), 'presentation'));
@@ -65,16 +65,18 @@ class files_test extends \advanced_testcase {
     /**
      * Plugin file test case
      */
-    public function test_pluginfile_file() {
+    public function test_pluginfile_file(): void {
         global $CFG;
         $this->resetAfterTest();
 
         list($user, $bbactivity) = $this->create_user_and_activity($CFG->dirroot . self::PRESENTATION_FILEPATH);
         $this->setUser($user);
         $instance = instance::get_from_instanceid($bbactivity->id);
+        $cm = $instance->get_cm();
+        $cmrecord = $cm->get_course_module_record();
         /** @var stored_file $mediafile */
         $mediafile =
-            files::pluginfile_file($this->get_course(), $instance->get_cm(), $instance->get_context(),
+            files::pluginfile_file($this->get_course(), $cmrecord, $instance->get_context(),
                 'presentation', [self::PRESENTATION_FILENAME]);
         $this->assertEquals(self::PRESENTATION_FILENAME, $mediafile->get_filename());
     }
@@ -82,87 +84,90 @@ class files_test extends \advanced_testcase {
     /**
      * Get presentation file
      */
-    public function test_default_presentation_get_file() {
+    public function test_default_presentation_get_file(): void {
         $this->resetAfterTest();
 
         list($user, $bbactivity) = $this->create_user_and_activity();
         $this->setUser($user);
 
         $instance = instance::get_from_instanceid($bbactivity->id);
+        $cm = $instance->get_cm();
+        $cmrecord = $cm->get_course_module_record();
         $mediafilename =
-            files::get_plugin_filename($this->get_course(), $instance->get_cm(), $instance->get_context(), ['presentation.pptx']);
+            files::get_plugin_filename($this->get_course(), $cmrecord, $instance->get_context(), ['presentation.pptx']);
         $this->assertEquals('presentation.pptx', $mediafilename);
     }
 
     /**
      * Test that file is accessible only once.
      */
-    public function test_presentation_file_accessible_twice() {
+    public function test_presentation_file_accessible_twice(): void {
         global $CFG;
         $this->resetAfterTest();
 
         list($user, $bbactivity) = $this->create_user_and_activity($CFG->dirroot . self::PRESENTATION_FILEPATH);
         $this->setUser($user);
-
+        $CFG->bigbluebuttonbn_preuploadpresentation_editable = true;
         $instance = instance::get_from_instanceid($bbactivity->id);
         $presentation = $instance->get_presentation_for_bigbluebutton_upload();
         $fulldirset = explode('/', $presentation['url']);
         $filename = array_pop($fulldirset);
         $nonce = array_pop($fulldirset);
+        $cm = $instance->get_cm();
+        $cmrecord = $cm->get_course_module_record();
         // The link should be valid twice.
         for ($i = 0; $i < 2; $i++) {
-            $mediafile =
-                files::pluginfile_file($this->get_course(), $instance->get_cm(), $instance->get_context(), 'presentation',
-                    [$nonce, $filename]);
+            $mediafile = files::pluginfile_file($this->get_course(), $cmrecord, $instance->get_context(), 'presentation',
+                [$nonce, $filename]);
             $this->assertEquals($filename, $mediafile->get_filename());
         }
         // Third time is a charm, this should be false.
-        $mediafile =
-            files::pluginfile_file($this->get_course(), $instance->get_cm(), $instance->get_context(), 'presentation',
-                [$nonce, $filename]);
+        $mediafile = files::pluginfile_file($this->get_course(), $cmrecord, $instance->get_context(), 'presentation',
+            [$nonce, $filename]);
         $this->assertFalse($mediafile);
     }
 
     /**
      * Test that file is accessible only once.
      */
-    public function test_presentation_file_not_accessible_externally() {
+    public function test_presentation_file_not_accessible_externally(): void {
         global $CFG;
         $this->resetAfterTest();
 
         list($user, $bbactivity) = $this->create_user_and_activity($CFG->dirroot . self::PRESENTATION_FILEPATH);
         $this->setUser($user);
-
+        $CFG->bigbluebuttonbn_preuploadpresentation_editable = true;
         $instance = instance::get_from_instanceid($bbactivity->id);
         $presentation = $instance->get_presentation();
         $fulldirset = explode('/', $presentation['url']);
         $filename = array_pop($fulldirset);
         $this->setGuestUser();
         $this->expectException(\require_login_exception::class);
-        files::pluginfile_file($this->get_course(), $instance->get_cm(), $instance->get_context(), 'presentation',
-            [$filename]);
+        $cm = $instance->get_cm();
+        $cmrecord = $cm->get_course_module_record();
+        files::pluginfile_file($this->get_course(), $cmrecord, $instance->get_context(), 'presentation', [$filename]);
 
         $this->setUser($user);
-        $mediafile =
-            files::pluginfile_file($this->get_course(), $instance->get_cm(), $instance->get_context(), 'presentation',
-                [$filename]);
+        $mediafile = files::pluginfile_file($this->get_course(), $cmrecord, $instance->get_context(), 'presentation', [$filename]);
         $this->assertNotNull($mediafile);
     }
 
     /**
      * Get filename test
      */
-    public function test_pluginfile_filename() {
+    public function test_pluginfile_filename(): void {
+        global $CFG;
         $this->resetAfterTest();
 
         list($user, $bbactivity, $bbactivitycm, $bbactivitycontext) = $this->create_user_and_activity();
         $this->setUser($user);
         $this->create_sample_file(self::PRESENTATION_FILENAME, $bbactivitycontext->id);
+        $CFG->bigbluebuttonbn_preuploadpresentation_editable = true;
         $presentationdef = files::get_presentation($bbactivitycontext, self::PRESENTATION_FILENAME, $bbactivity->id, true);
         $pathparts = explode('/', $presentationdef['url']);
         $filename = array_pop($pathparts);
         $salt = array_pop($pathparts);
-        $filename = files::get_plugin_filename($this->get_course(), $bbactivitycm, $bbactivitycontext,
+        $filename = files::get_plugin_filename($this->get_course(), $bbactivitycm->get_course_module_record(), $bbactivitycontext,
             [$salt, $filename]);
         $this->assertEquals(self::PRESENTATION_FILENAME, $filename);
     }
@@ -170,7 +175,7 @@ class files_test extends \advanced_testcase {
     /**
      * Get media files
      */
-    public function test_get_media_file() {
+    public function test_get_media_file(): void {
         $this->resetAfterTest();
 
         list($user, $bbactivity) = $this->create_user_and_activity();
@@ -195,7 +200,7 @@ class files_test extends \advanced_testcase {
     /**
      * Create a user and an activity
      *
-     * @param null $presentationfilename
+     * @param string|null $presentationpath
      * @param bool $closed
      * @return array
      */

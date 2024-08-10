@@ -34,26 +34,20 @@ define('MESSAGE_TYPE_MESSAGE', 'message');
 /**
  * Define contants for messaging default settings population. For unambiguity of
  * plugin developer intentions we use 4-bit value (LSB numbering):
- * bit 0 - whether to send message when user is loggedin (MESSAGE_DEFAULT_LOGGEDIN)
- * bit 1 - whether to send message when user is loggedoff (MESSAGE_DEFAULT_LOGGEDOFF)
+ * bit 0 - whether to send message (MESSAGE_DEFAULT_ENABLED)
+ * bit 1 - not used
  * bit 2..3 - messaging permission (MESSAGE_DISALLOWED|MESSAGE_PERMITTED|MESSAGE_FORCED)
  *
- * MESSAGE_PERMITTED_MASK contains the mask we use to distinguish permission setting
+ * MESSAGE_PERMITTED_MASK contains the mask we use to distinguish permission setting.
  */
 
-define('MESSAGE_DEFAULT_LOGGEDIN', 0x01); // 0001
-define('MESSAGE_DEFAULT_LOGGEDOFF', 0x02); // 0010
+define('MESSAGE_DEFAULT_ENABLED', 0x01); // 0001.
 
-define('MESSAGE_DISALLOWED', 0x04); // 0100
-define('MESSAGE_PERMITTED', 0x08); // 1000
-define('MESSAGE_FORCED', 0x0c); // 1100
+define('MESSAGE_DISALLOWED', 0x04); // 0100.
+define('MESSAGE_PERMITTED', 0x08); // 1000.
+define('MESSAGE_FORCED', 0x0c); // 1100.
 
-define('MESSAGE_PERMITTED_MASK', 0x0c); // 1100
-
-/**
- * Set default value for default outputs permitted setting
- */
-define('MESSAGE_DEFAULT_PERMITTED', 'permitted');
+define('MESSAGE_PERMITTED_MASK', 0x0c); // 1100.
 
 /**
  * Set default values for polling.
@@ -68,48 +62,6 @@ define('MESSAGE_DEFAULT_TIMEOUT_POLL_IN_SECONDS', 5 * MINSECS);
 define('MESSAGE_GET_UNREAD', 0);
 define('MESSAGE_GET_READ', 1);
 define('MESSAGE_GET_READ_AND_UNREAD', 2);
-
-/**
- * Returns the count of unread messages for user. Either from a specific user or from all users.
- *
- * @deprecated since 3.10
- * TODO: MDL-69643
- * @param object $user1 the first user. Defaults to $USER
- * @param object $user2 the second user. If null this function will count all of user 1's unread messages.
- * @return int the count of $user1's unread messages
- */
-function message_count_unread_messages($user1=null, $user2=null) {
-    global $USER, $DB;
-
-    debugging('message_count_unread_messages is deprecated and no longer used',
-        DEBUG_DEVELOPER);
-
-    if (empty($user1)) {
-        $user1 = $USER;
-    }
-
-    $sql = "SELECT COUNT(m.id)
-              FROM {messages} m
-        INNER JOIN {message_conversations} mc
-                ON mc.id = m.conversationid
-        INNER JOIN {message_conversation_members} mcm
-                ON mcm.conversationid = mc.id
-         LEFT JOIN {message_user_actions} mua
-                ON (mua.messageid = m.id AND mua.userid = ? AND (mua.action = ? OR mua.action = ?))
-             WHERE mua.id is NULL
-               AND mcm.userid = ?";
-    $params = [$user1->id, \core_message\api::MESSAGE_ACTION_DELETED, \core_message\api::MESSAGE_ACTION_READ, $user1->id];
-
-    if (!empty($user2)) {
-        $sql .= " AND m.useridfrom = ?";
-        $params[] = $user2->id;
-    } else {
-        $sql .= " AND m.useridfrom <> ?";
-        $params[] = $user1->id;
-    }
-
-    return $DB->count_records_sql($sql, $params);
-}
 
 /**
  * Try to guess how to convert the message to html.
@@ -496,23 +448,11 @@ function get_message_output_default_preferences() {
  *
  * @param  int    $plugindefault Default setting suggested by plugin
  * @param  string $processorname The name of processor
- * @return array  $settings array of strings in the order: $permitted, $loggedin, $loggedoff.
+ * @return array  $settings array of strings in the order: $locked, $enabled.
  */
 function translate_message_default_setting($plugindefault, $processorname) {
-    // Preset translation arrays
-    $permittedvalues = array(
-        MESSAGE_DISALLOWED => 'disallowed',
-        MESSAGE_PERMITTED  => 'permitted',
-        MESSAGE_FORCED     => 'forced',
-    );
 
-    $loggedinstatusvalues = array(
-        0x00 => null, // use null if loggedin/loggedoff is not defined
-        MESSAGE_DEFAULT_LOGGEDIN  => 'loggedin',
-        MESSAGE_DEFAULT_LOGGEDOFF => 'loggedoff',
-    );
-
-    // define the default setting
+    // Define the default setting.
     $processor = get_message_processor($processorname);
     $default = $processor->get_default_messaging_settings();
 
@@ -526,15 +466,27 @@ function translate_message_default_setting($plugindefault, $processorname) {
         $plugindefault = $default;
     }
 
-    $permitted = $permittedvalues[$plugindefault & MESSAGE_PERMITTED_MASK];
-    $loggedin = $loggedoff = null;
+    $locked = false;
+    $enabled = false;
 
-    if (($plugindefault & MESSAGE_PERMITTED_MASK) == MESSAGE_PERMITTED) {
-        $loggedin = $loggedinstatusvalues[$plugindefault & MESSAGE_DEFAULT_LOGGEDIN];
-        $loggedoff = $loggedinstatusvalues[$plugindefault & MESSAGE_DEFAULT_LOGGEDOFF];
+    $permitted = $plugindefault & MESSAGE_PERMITTED_MASK;
+    switch ($permitted) {
+        case MESSAGE_FORCED:
+            $locked = true;
+            $enabled = true;
+            break;
+        case MESSAGE_DISALLOWED:
+            $locked = true;
+            $enabled = false;
+            break;
+        default:
+            $locked = false;
+            // It's equivalent to logged in.
+            $enabled = $plugindefault & MESSAGE_DEFAULT_ENABLED == MESSAGE_DEFAULT_ENABLED;
+            break;
     }
 
-    return array($permitted, $loggedin, $loggedoff);
+    return array($locked, $enabled);
 }
 
 /**
@@ -716,10 +668,14 @@ function message_output_fragment_processor_settings($args = []) {
         throw new moodle_exception('Must provide a userid');
     }
 
-    $type = $args['type'];
-    $userid = $args['userid'];
+    $type = clean_param($args['type'], PARAM_SAFEDIR);
+    $userid = clean_param($args['userid'], PARAM_INT);
 
     $user = core_user::get_user($userid, '*', MUST_EXIST);
+    if (!core_message_can_edit_message_profile($user)) {
+        throw new moodle_exception('Cannot edit message profile');
+    }
+
     $processor = get_message_processor($type);
     $providers = message_get_providers_for_user($userid);
     $processorwrapper = new stdClass();
@@ -791,13 +747,13 @@ function core_message_user_preferences() {
         'null' => NULL_NOT_ALLOWED,
         'default' => false
     );
-    $preferences['/^message_provider_([\w\d_]*)_logged(in|off)$/'] = array('isregex' => true, 'type' => PARAM_NOTAGS,
+    $preferences['/^message_provider_([\w\d_]*)_enabled$/'] = array('isregex' => true, 'type' => PARAM_NOTAGS,
         'null' => NULL_NOT_ALLOWED, 'default' => 'none',
         'permissioncallback' => function ($user, $preferencename) {
             global $CFG;
             require_once($CFG->libdir.'/messagelib.php');
             if (core_message_can_edit_message_profile($user) &&
-                    preg_match('/^message_provider_([\w\d_]*)_logged(in|off)$/', $preferencename, $matches)) {
+                    preg_match('/^message_provider_([\w\d_]*)_enabled$/', $preferencename, $matches)) {
                 $providers = message_get_providers_for_user($user->id);
                 foreach ($providers as $provider) {
                     if ($matches[1] === $provider->component . '_' . $provider->name) {
@@ -817,13 +773,4 @@ function core_message_user_preferences() {
             return $parts ? join(',', $parts) : 'none';
         });
     return $preferences;
-}
-
-/**
- * Render the message drawer to be included in the top of the body of each page.
- *
- * @return string HTML
- */
-function core_message_standard_after_main_region_html() {
-    return \core_message\helper::render_messaging_widget(true, null, null);
 }

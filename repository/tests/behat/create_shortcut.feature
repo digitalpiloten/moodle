@@ -15,13 +15,15 @@ Feature: Create shortcuts
     And the following "course enrolments" exist:
       | user | course | role |
       | teacher1 | C1 | editingteacher |
+    And the following "blocks" exist:
+      | blockname     | contextlevel | reference | pagetypepattern | defaultregion |
+      | private_files | System       | 1         | my-index        | side-post     |
     When I log in as "teacher1"
     And I follow "Manage private files"
     And I upload "lib/tests/fixtures/empty.txt" file to "Files" filemanager
     Then I should see "empty.txt" in the "div.fp-content" "css_element"
     And I press "Save changes"
-    And I am on "Course 1" course homepage with editing mode on
-    And I add a "Folder" to section "1"
+    And I add a folder activity to course "Course 1" section "1"
     And I set the following fields to these values:
       | Name        | Test folder             |
       | Description | Test folder description |

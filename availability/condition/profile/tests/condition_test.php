@@ -14,17 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Unit tests for the user profile condition.
- *
- * @package availability_profile
- * @copyright 2014 The Open University
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
-defined('MOODLE_INTERNAL') || die();
-
-use availability_profile\condition;
+namespace availability_profile;
 
 /**
  * Unit tests for the user profile condition.
@@ -33,7 +23,7 @@ use availability_profile\condition;
  * @copyright 2014 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class availability_profile_condition_testcase extends advanced_testcase {
+class condition_test extends \advanced_testcase {
     /** @var profile_define_text Profile field for testing */
     protected $profilefield;
 
@@ -47,6 +37,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
 
     public function setUp(): void {
         global $DB, $CFG;
+        parent::setUp();
 
         $this->resetAfterTest();
 
@@ -65,7 +56,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
     /**
      * Tests constructing and using date condition as part of tree.
      */
-    public function test_in_tree() {
+    public function test_in_tree(): void {
         global $USER;
 
         $this->setAdminUser();
@@ -94,13 +85,13 @@ class availability_profile_condition_testcase extends advanced_testcase {
      * Tests the constructor including error conditions. Also tests the
      * string conversion feature (intended for debugging only).
      */
-    public function test_constructor() {
+    public function test_constructor(): void {
         // No parameters.
-        $structure = new stdClass();
+        $structure = new \stdClass();
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing or invalid ->op', $e->getMessage());
         }
 
@@ -109,7 +100,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing or invalid ->op', $e->getMessage());
         }
 
@@ -118,7 +109,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing or invalid ->v', $e->getMessage());
         }
 
@@ -127,7 +118,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing or invalid ->v', $e->getMessage());
         }
 
@@ -136,7 +127,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Unexpected ->v', $e->getMessage());
         }
 
@@ -146,7 +137,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing ->sf or ->cf', $e->getMessage());
         }
 
@@ -155,7 +146,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Invalid ->sf', $e->getMessage());
         }
 
@@ -165,7 +156,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Both ->sf and ->cf', $e->getMessage());
         }
 
@@ -175,7 +166,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Invalid ->cf', $e->getMessage());
         }
 
@@ -198,7 +189,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
     /**
      * Tests the save() function.
      */
-    public function test_save() {
+    public function test_save(): void {
         $structure = (object)array('cf' => 'frogtype', 'op' => condition::OP_IS_EMPTY);
         $cond = new condition($structure);
         $structure->type = 'profile';
@@ -216,7 +207,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
      * get_full_information because that function is called from is_available
      * and we test its values here.
      */
-    public function test_is_available() {
+    public function test_is_available(): void {
         global $USER, $SITE, $DB;
         $this->setAdminUser();
         $info = new \core_availability\mock_info();
@@ -324,7 +315,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
      * not be offered in the menu because their data is not included in user
      * object
      */
-    public function test_custom_textarea_field() {
+    public function test_custom_textarea_field(): void {
         global $USER, $SITE, $DB;
         $this->setAdminUser();
         $info = new \core_availability\mock_info();
@@ -406,7 +397,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
     /**
      * Tests the filter_users (bulk checking) function.
      */
-    public function test_filter_users() {
+    public function test_filter_users(): void {
         global $DB, $CFG;
         $this->resetAfterTest();
         $CFG->enableavailability = true;
@@ -453,7 +444,7 @@ class availability_profile_condition_testcase extends advanced_testcase {
      * Tests getting user list SQL. This is a different test from the above because
      * there is some additional code in this function so more variants need testing.
      */
-    public function test_get_user_list_sql() {
+    public function test_get_user_list_sql(): void {
         global $DB, $CFG;
         $this->resetAfterTest();
         $CFG->enableavailability = true;

@@ -14,28 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * This file contains tests that walks essay questions through some attempts.
- *
- * @package   qtype_essay
- * @copyright 2013 The Open University
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+namespace qtype_essay;
 
+use question_bank;
+use question_engine;
+use question_state;
 
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 require_once($CFG->dirroot . '/question/engine/tests/helpers.php');
 
-
 /**
  * Unit tests for the essay question type.
  *
+ * @package   qtype_essay
  * @copyright 2013 The Open University
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base {
+class walkthrough_test extends \qbehaviour_walkthrough_test_base {
 
     protected function check_contains_textarea($name, $content = '', $height = 10) {
         $fieldname = $this->quba->get_field_prefix($this->slot) . $name;
@@ -62,7 +59,7 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
     protected function save_file_to_draft_area($usercontextid, $draftitemid, $filename, $contents) {
         $fs = get_file_storage();
 
-        $filerecord = new stdClass();
+        $filerecord = new \stdClass();
         $filerecord->contextid = $usercontextid;
         $filerecord->component = 'user';
         $filerecord->filearea = 'draft';
@@ -72,7 +69,7 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
         $fs->create_file_from_string($filerecord, $contents);
     }
 
-    public function test_deferred_feedback_html_editor() {
+    public function test_deferred_feedback_html_editor(): void {
         global $PAGE;
 
         // The current text editor depends on the users profile setting - so it needs a valid user.
@@ -81,7 +78,7 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
         $PAGE->set_url('/');
 
         // Create an essay question.
-        $q = test_question_maker::make_question('essay', 'editor');
+        $q = \test_question_maker::make_question('essay', 'editor');
         $this->start_attempt_at_question($q, 'deferredfeedback', 1);
 
         $prefix = $this->quba->get_field_prefix($this->slot);
@@ -130,10 +127,10 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
                 $this->get_contains_general_feedback_expectation($q));
     }
 
-    public function test_deferred_feedback_plain_text() {
+    public function test_deferred_feedback_plain_text(): void {
 
         // Create an essay question.
-        $q = test_question_maker::make_question('essay', 'plain');
+        $q = \test_question_maker::make_question('essay', 'plain');
         $this->start_attempt_at_question($q, 'deferredfeedback', 1);
 
         $prefix = $this->quba->get_field_prefix($this->slot);
@@ -182,7 +179,7 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
                 $this->get_contains_general_feedback_expectation($q));
     }
 
-    public function test_responsetemplate() {
+    public function test_responsetemplate(): void {
         global $PAGE;
 
         // The current text editor depends on the users profile setting - so it needs a valid user.
@@ -191,7 +188,7 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
         $PAGE->set_url('/');
 
         // Create an essay question.
-        $q = test_question_maker::make_question('essay', 'responsetemplate');
+        $q = \test_question_maker::make_question('essay', 'responsetemplate');
         $this->start_attempt_at_question($q, 'deferredfeedback', 1);
 
         $prefix = $this->quba->get_field_prefix($this->slot);
@@ -240,14 +237,14 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
                 $this->get_contains_general_feedback_expectation($q));
     }
 
-    public function test_deferred_feedback_html_editor_with_files_attempt_on_last() {
+    public function test_deferred_feedback_html_editor_with_files_attempt_on_last(): void {
         global $CFG, $USER, $PAGE;
 
         $this->resetAfterTest(true);
         $this->setAdminUser();
         // Required to init a text editor.
         $PAGE->set_url('/');
-        $usercontextid = context_user::instance($USER->id)->id;
+        $usercontextid = \context_user::instance($USER->id)->id;
         $fs = get_file_storage();
 
         // Create an essay question in the DB.
@@ -267,11 +264,11 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
         // First we need to get the draft item ids.
         $this->render();
         if (!preg_match('/env=editor&amp;.*?itemid=(\d+)&amp;/', $this->currentoutput, $matches)) {
-            throw new coding_exception('Editor draft item id not found.');
+            throw new \coding_exception('Editor draft item id not found.');
         }
         $editordraftid = $matches[1];
         if (!preg_match('/env=filemanager&amp;action=browse&amp;.*?itemid=(\d+)&amp;/', $this->currentoutput, $matches)) {
-            throw new coding_exception('File manager draft item id not found.');
+            throw new \coding_exception('File manager draft item id not found.');
         }
         $attachementsdraftid = $matches[1];
 
@@ -295,11 +292,11 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
 
         $this->render();
         if (!preg_match('/env=editor&amp;.*?itemid=(\d+)&amp;/', $this->currentoutput, $matches)) {
-            throw new coding_exception('Editor draft item id not found.');
+            throw new \coding_exception('Editor draft item id not found.');
         }
         $editordraftid = $matches[1];
         if (!preg_match('/env=filemanager&amp;action=browse&amp;.*?itemid=(\d+)&amp;/', $this->currentoutput, $matches)) {
-            throw new coding_exception('File manager draft item id not found.');
+            throw new \coding_exception('File manager draft item id not found.');
         }
         $attachementsdraftid = $matches[1];
 
@@ -328,7 +325,7 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
 
         $q = question_bank::load_question($question->id);
         $this->quba = question_engine::make_questions_usage_by_activity('unit_test',
-                context_system::instance());
+                \context_system::instance());
         $this->quba->set_preferred_behaviour('deferredfeedback');
         $this->slot = $this->quba->add_question($q, 1);
         $this->quba->start_question_based_on($this->slot, $oldqa);
@@ -343,11 +340,11 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
 
         $this->render();
         if (!preg_match('/env=editor&amp;.*?itemid=(\d+)&amp;/', $this->currentoutput, $matches)) {
-            throw new coding_exception('Editor draft item id not found.');
+            throw new \coding_exception('Editor draft item id not found.');
         }
         $editordraftid = $matches[1];
         if (!preg_match('/env=filemanager&amp;action=browse&amp;.*?itemid=(\d+)&amp;/', $this->currentoutput, $matches)) {
-            throw new coding_exception('File manager draft item id not found.');
+            throw new \coding_exception('File manager draft item id not found.');
         }
         $attachementsdraftid = $matches[1];
 
@@ -364,14 +361,14 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
         $this->check_step_count(1);
     }
 
-    public function test_deferred_feedback_html_editor_with_files_attempt_on_last_no_files_uploaded() {
+    public function test_deferred_feedback_html_editor_with_files_attempt_on_last_no_files_uploaded(): void {
         global $CFG, $USER, $PAGE;
 
         $this->resetAfterTest(true);
         $this->setAdminUser();
         // Required to init a text editor.
         $PAGE->set_url('/');
-        $usercontextid = context_user::instance($USER->id)->id;
+        $usercontextid = \context_user::instance($USER->id)->id;
         $fs = get_file_storage();
 
         // Create an essay question in the DB.
@@ -391,11 +388,11 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
         // First we need to get the draft item ids.
         $this->render();
         if (!preg_match('/env=editor&amp;.*?itemid=(\d+)&amp;/', $this->currentoutput, $matches)) {
-            throw new coding_exception('Editor draft item id not found.');
+            throw new \coding_exception('Editor draft item id not found.');
         }
         $editordraftid = $matches[1];
         if (!preg_match('/env=filemanager&amp;action=browse&amp;.*?itemid=(\d+)&amp;/', $this->currentoutput, $matches)) {
-            throw new coding_exception('File manager draft item id not found.');
+            throw new \coding_exception('File manager draft item id not found.');
         }
         $attachementsdraftid = $matches[1];
 
@@ -423,7 +420,7 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
 
         $q = question_bank::load_question($question->id);
         $this->quba = question_engine::make_questions_usage_by_activity('unit_test',
-                context_system::instance());
+                \context_system::instance());
         $this->quba->set_preferred_behaviour('deferredfeedback');
         $this->slot = $this->quba->add_question($q, 1);
         $this->quba->start_question_based_on($this->slot, $oldqa);
@@ -439,12 +436,12 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
         $this->assertMatchesRegularExpression('/I refuse to draw you a picture, so there!/', $this->currentoutput);
     }
 
-    public function test_deferred_feedback_plain_attempt_on_last() {
+    public function test_deferred_feedback_plain_attempt_on_last(): void {
         global $CFG, $USER;
 
         $this->resetAfterTest(true);
         $this->setAdminUser();
-        $usercontextid = context_user::instance($USER->id)->id;
+        $usercontextid = \context_user::instance($USER->id)->id;
 
         // Create an essay question in the DB.
         $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
@@ -484,7 +481,7 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
 
         $q = question_bank::load_question($question->id);
         $this->quba = question_engine::make_questions_usage_by_activity('unit_test',
-                context_system::instance());
+                \context_system::instance());
         $this->quba->set_preferred_behaviour('deferredfeedback');
         $this->slot = $this->quba->add_question($q, 1);
         $this->quba->start_question_based_on($this->slot, $oldqa);
@@ -504,14 +501,14 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
         $this->assertStringNotContainsString('d41d8cd98f00b204e9800998ecf8427e', $this->currentoutput);
     }
 
-    public function test_deferred_feedback_html_editor_with_files_attempt_wrong_filetypes() {
+    public function test_deferred_feedback_html_editor_with_files_attempt_wrong_filetypes(): void {
         global $CFG, $USER, $PAGE;
 
         $this->resetAfterTest(true);
         $this->setAdminUser();
         // Required to init a text editor.
         $PAGE->set_url('/');
-        $usercontextid = context_user::instance($USER->id)->id;
+        $usercontextid = \context_user::instance($USER->id)->id;
         $fs = get_file_storage();
 
         // Create an essay question in the DB.
@@ -532,11 +529,11 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
         // First we need to get the draft item ids.
         $this->render();
         if (!preg_match('/env=editor&amp;.*?itemid=(\d+)&amp;/', $this->currentoutput, $matches)) {
-            throw new coding_exception('Editor draft item id not found.');
+            throw new \coding_exception('Editor draft item id not found.');
         }
         $editordraftid = $matches[1];
         if (!preg_match('/env=filemanager&amp;action=browse&amp;.*?itemid=(\d+)&amp;/', $this->currentoutput, $matches)) {
-            throw new coding_exception('File manager draft item id not found.');
+            throw new \coding_exception('File manager draft item id not found.');
         }
         $attachementsdraftid = $matches[1];
 
@@ -563,14 +560,14 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
         $this->save_quba();
     }
 
-    public function test_deferred_feedback_html_editor_with_files_attempt_correct_filetypes() {
+    public function test_deferred_feedback_html_editor_with_files_attempt_correct_filetypes(): void {
         global $CFG, $USER, $PAGE;
 
         $this->resetAfterTest(true);
         $this->setAdminUser();
         // Required to init a text editor.
         $PAGE->set_url('/');
-        $usercontextid = context_user::instance($USER->id)->id;
+        $usercontextid = \context_user::instance($USER->id)->id;
         $fs = get_file_storage();
 
         // Create an essay question in the DB.
@@ -591,11 +588,11 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
         // First we need to get the draft item ids.
         $this->render();
         if (!preg_match('/env=editor&amp;.*?itemid=(\d+)&amp;/', $this->currentoutput, $matches)) {
-            throw new coding_exception('Editor draft item id not found.');
+            throw new \coding_exception('Editor draft item id not found.');
         }
         $editordraftid = $matches[1];
         if (!preg_match('/env=filemanager&amp;action=browse&amp;.*?itemid=(\d+)&amp;/', $this->currentoutput, $matches)) {
-            throw new coding_exception('File manager draft item id not found.');
+            throw new \coding_exception('File manager draft item id not found.');
         }
         $attachementsdraftid = $matches[1];
 
@@ -622,7 +619,7 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
         $this->save_quba();
     }
 
-    public function test_deferred_feedback_word_limits() {
+    public function test_deferred_feedback_word_limits(): void {
         global $PAGE;
 
         // The current text editor depends on the users profile setting - so it needs a valid user.
@@ -632,7 +629,7 @@ class qtype_essay_walkthrough_testcase extends qbehaviour_walkthrough_test_base 
 
         // Create an essay question.
         /** @var qtype_essay_question $q */
-        $q = test_question_maker::make_question('essay', 'editor');
+        $q = \test_question_maker::make_question('essay', 'editor');
         $q->minwordlimit = 3;
         $q->maxwordlimit = 7;
         $this->start_attempt_at_question($q, 'deferredfeedback', 1);

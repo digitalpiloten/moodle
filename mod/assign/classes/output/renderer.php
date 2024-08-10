@@ -24,11 +24,15 @@
 
 namespace mod_assign\output;
 
+use assign_files;
+use html_writer;
+use mod_assign\output\grading_app;
+use portfolio_add_button;
+use stored_file;
+
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/mod/assign/locallib.php');
-
-use \mod_assign\output\grading_app;
 
 /**
  * A custom renderer class that extends the plugin_renderer_base and is used by the assign module.
@@ -39,6 +43,9 @@ use \mod_assign\output\grading_app;
  */
 class renderer extends \plugin_renderer_base {
 
+    /** @var string a unique ID. */
+    public $htmlid;
+
     /**
      * Rendering assignment files
      *
@@ -46,8 +53,8 @@ class renderer extends \plugin_renderer_base {
      * @param int $userid
      * @param string $filearea
      * @param string $component
-     * @param stdClass $course
-     * @param stdClass $coursemodule
+     * @param \stdClass $course
+     * @param \stdClass $coursemodule
      * @return string
      */
     public function assign_files(\context $context, $userid, $filearea, $component, $course = null, $coursemodule = null) {
@@ -168,7 +175,7 @@ class renderer extends \plugin_renderer_base {
             $fullname = fullname($summary->user, $summary->viewfullnames);
             $extrainfo = array();
             foreach ($summary->extrauserfields as $extrafield) {
-                $extrainfo[] = $summary->user->$extrafield;
+                $extrainfo[] = s($summary->user->$extrafield);
             }
             if (count($extrainfo)) {
                 $fullname .= ' (' . implode(', ', $extrainfo) . ')';
@@ -230,10 +237,6 @@ class renderer extends \plugin_renderer_base {
      * @return string
      */
     public function render_assign_header(assign_header $header) {
-        global $USER;
-
-        $o = '';
-
         if ($header->subpage) {
             $this->page->navbar->add($header->subpage, $header->subpageurl);
             $args = ['contextname' => $header->context->get_context_name(false, true), 'subpage' => $header->subpage];
@@ -248,33 +251,26 @@ class renderer extends \plugin_renderer_base {
         $this->page->set_title($title);
         $this->page->set_heading($this->page->course->fullname);
 
-        $o .= $this->output->header();
-        if (!$this->page->has_secondary_navigation()) {
-            $o .= $this->output->heading($heading);
-        }
-
-        // Show the activity information output component.
-        $modinfo = get_fast_modinfo($header->assign->course);
-        $cm = $modinfo->get_cm($header->coursemoduleid);
-        $cmcompletion = \core_completion\cm_completion_details::get_instance($cm, $USER->id);
-        $activitydates = \core\activity_dates::get_dates_for_module($cm, $USER->id);
-        $o .= $this->output->activity_information($cm, $cmcompletion, $activitydates);
-
-        if ($header->preface) {
-            $o .= $header->preface;
-        }
-
-        if ($header->showintro) {
-            $o .= $this->output->box_start('generalbox boxaligncenter', 'intro');
-            $o .= format_module_intro('assign', $header->assign, $header->coursemoduleid);
-            if ($header->activity) {
-                $o .= $this->format_activity_text($header->assign, $header->coursemoduleid);
+        $description = $header->preface;
+        if ($header->showintro || $header->activity) {
+            $description = $this->output->box_start('generalbox boxaligncenter');
+            if ($header->showintro) {
+                $description .= format_module_intro('assign', $header->assign, $header->coursemoduleid);
             }
-            $o .= $header->postfix;
-            $o .= $this->output->box_end();
+            if ($header->activity) {
+                $description .= $this->format_activity_text($header->assign, $header->coursemoduleid);
+            }
+            $description .= $header->postfix;
+            $description .= $this->output->box_end();
         }
 
-        return $o;
+        $activityheader = $this->page->activityheader;
+        $activityheader->set_attrs([
+            'title' => $activityheader->is_title_allowed() ? $heading : '',
+            'description' => $description
+        ]);
+
+        return $this->output->header();
     }
 
     /**
@@ -299,6 +295,12 @@ class renderer extends \plugin_renderer_base {
         $o = '';
         $o .= $this->output->container_start('gradingsummary');
         $o .= $this->output->heading(get_string('gradingsummary', 'assign'), 3);
+
+        if (isset($summary->cm)) {
+            $currenturl = new \moodle_url('/mod/assign/view.php', array('id' => $summary->cm->id));
+            $o .= groups_print_activity_menu($summary->cm, $currenturl->out(), true);
+        }
+
         $o .= $this->output->box_start('boxaligncenter gradingsummarytable');
         $t = new \html_table();
         $t->attributes['class'] = 'generaltable table-bordered';
@@ -376,6 +378,14 @@ class renderer extends \plugin_renderer_base {
 
         }
 
+        // Add time limit info if there is one.
+        $timelimitenabled = get_config('assign', 'enabletimelimit');
+        if ($timelimitenabled && $summary->timelimit > 0) {
+            $cell1content = get_string('timelimit', 'assign');
+            $cell2content = format_time($summary->timelimit);
+            $this->add_table_row_tuple($t, $cell1content, $cell2content, [], []);
+        }
+
         // All done - write the table.
         $o .= \html_writer::table($t);
         $o .= $this->output->box_end();
@@ -445,6 +455,11 @@ class renderer extends \plugin_renderer_base {
         $o .= \html_writer::table($t);
         $o .= $this->output->box_end();
 
+        if (!empty($status->gradingcontrollergrade)) {
+            $o .= $this->output->heading(get_string('gradebreakdown', 'assign'), 4);
+            $o .= $status->gradingcontrollergrade;
+        }
+
         $o .= $this->output->container_end();
         return $o;
     }
@@ -463,7 +478,7 @@ class renderer extends \plugin_renderer_base {
         if ($status->teamsubmissionenabled) {
             $group = $status->submissiongroup;
             if ($group) {
-                $team = format_string($group->name, false, $status->context);
+                $team = format_string($group->name, false, ['context' => $status->context]);
             } else if ($status->preventsubmissionnotingroup) {
                 if (count($status->usergroups) == 0) {
                     $team = '<span class="alert alert-error">' . get_string('noteam', 'assign') . '</span>';
@@ -641,7 +656,7 @@ class renderer extends \plugin_renderer_base {
             $cell1content = get_string('submissionteam', 'assign');
             $group = $status->submissiongroup;
             if ($group) {
-                $cell2content = format_string($group->name, false, $status->context);
+                $cell2content = format_string($group->name, false, ['context' => $status->context]);
             } else if ($status->preventsubmissionnotingroup) {
                 if (count($status->usergroups) == 0) {
                     $notification = new \core\output\notification(get_string('noteam', 'assign'), 'error');
@@ -660,7 +675,8 @@ class renderer extends \plugin_renderer_base {
             $this->add_table_row_tuple($t, $cell1content, $cell2content);
         }
 
-        if ($status->attemptreopenmethod != ASSIGN_ATTEMPT_REOPEN_METHOD_NONE) {
+        // If multiple attempts are allowed.
+        if ($status->maxattempts > 1 || $status->maxattempts == ASSIGN_UNLIMITED_ATTEMPTS) {
             $currentattempt = 1;
             if (!$status->teamsubmissionenabled) {
                 if ($status->submission) {
@@ -810,13 +826,6 @@ class renderer extends \plugin_renderer_base {
             $this->add_table_row_tuple($t, $cell1content, $cell2content, [], $cell2attributes);
         }
 
-        // Grading criteria preview.
-        if (!empty($status->gradingcontrollerpreview)) {
-            $cell1content = get_string('gradingmethodpreview', 'assign');
-            $cell2content = $status->gradingcontrollerpreview;
-            $this->add_table_row_tuple($t, $cell1content, $cell2content, [], []);
-        }
-
         // Last modified.
         if ($submission) {
             $cell1content = get_string('timemodified', 'assign');
@@ -857,84 +866,10 @@ class renderer extends \plugin_renderer_base {
         $o .= \html_writer::table($t);
         $o .= $this->output->box_end();
 
-        // Links.
-        if ($status->view == assign_submission_status::STUDENT_VIEW) {
-            if ($status->canedit) {
-                if (!$submission || $submission->status == ASSIGN_SUBMISSION_STATUS_NEW) {
-                    $o .= $this->output->box_start('generalbox submissionaction');
-                    $urlparams = array('id' => $status->coursemoduleid, 'action' => 'editsubmission');
-
-                    if ($timelimitenabled && empty($submission->timestarted)) {
-                        $confirmation = new \confirm_action(
-                            get_string(
-                                'confirmstart',
-                                'assign',
-                                format_time($status->timelimit)
-                            ),
-                            null,
-                            get_string('beginassignment', 'assign')
-                        );
-                        $o .= $this->output->action_link(
-                            new \moodle_url('/mod/assign/view.php', $urlparams),
-                            get_string('beginassignment', 'assign'),
-                            $confirmation,
-                            array('class' => 'btn btn-primary')
-                        );
-                    } else {
-                        $o .= $this->output->single_button(
-                            new \moodle_url('/mod/assign/view.php', $urlparams),
-                            get_string('addsubmission', 'assign'), 'get', array('primary' => true)
-                        );
-                    }
-
-                    $o .= $this->output->box_start('boxaligncenter submithelp');
-                    $o .= get_string('addsubmission_help', 'assign');
-                    $o .= $this->output->box_end();
-                    $o .= $this->output->box_end();
-                } else if ($submission->status == ASSIGN_SUBMISSION_STATUS_REOPENED) {
-                    $o .= $this->output->box_start('generalbox submissionaction');
-                    $urlparams = array('id' => $status->coursemoduleid,
-                                       'action' => 'editprevioussubmission',
-                                       'sesskey'=>sesskey());
-                    $o .= $this->output->single_button(new \moodle_url('/mod/assign/view.php', $urlparams),
-                                                       get_string('addnewattemptfromprevious', 'assign'), 'get');
-                    $o .= $this->output->box_start('boxaligncenter submithelp');
-                    $o .= get_string('addnewattemptfromprevious_help', 'assign');
-                    $o .= $this->output->box_end();
-                    $o .= $this->output->box_end();
-                    $o .= $this->output->box_start('generalbox submissionaction');
-                    $urlparams = array('id' => $status->coursemoduleid, 'action' => 'editsubmission');
-                    $o .= $this->output->single_button(new \moodle_url('/mod/assign/view.php', $urlparams),
-                                                       get_string('addnewattempt', 'assign'), 'get');
-                    $o .= $this->output->box_start('boxaligncenter submithelp');
-                    $o .= get_string('addnewattempt_help', 'assign');
-                    $o .= $this->output->box_end();
-                    $o .= $this->output->box_end();
-                } else {
-                    $o .= $this->output->box_start('generalbox submissionaction');
-                    $urlparams = array('id' => $status->coursemoduleid, 'action' => 'editsubmission');
-                    $o .= $this->output->single_button(new \moodle_url('/mod/assign/view.php', $urlparams),
-                                                       get_string('editsubmission', 'assign'), 'get');
-                    $urlparams = array('id' => $status->coursemoduleid, 'action' => 'removesubmissionconfirm');
-                    $o .= $this->output->single_button(new \moodle_url('/mod/assign/view.php', $urlparams),
-                                                       get_string('removesubmission', 'assign'), 'get');
-                    $o .= $this->output->box_start('boxaligncenter submithelp');
-                    $o .= get_string('editsubmission_help', 'assign');
-                    $o .= $this->output->box_end();
-                    $o .= $this->output->box_end();
-                }
-            }
-
-            if ($status->cansubmit) {
-                $urlparams = array('id' => $status->coursemoduleid, 'action'=>'submit');
-                $o .= $this->output->box_start('generalbox submissionaction');
-                $o .= $this->output->single_button(new \moodle_url('/mod/assign/view.php', $urlparams),
-                                                   get_string('submitassignment', 'assign'), 'get');
-                $o .= $this->output->box_start('boxaligncenter submithelp');
-                $o .= get_string('submitassignment_help', 'assign');
-                $o .= $this->output->box_end();
-                $o .= $this->output->box_end();
-            }
+        // Grading criteria preview.
+        if (!empty($status->gradingcontrollerpreview)) {
+            $o .= $this->output->heading(get_string('gradingmethodpreview', 'assign'), 4);
+            $o .= $status->gradingcontrollerpreview;
         }
 
         $o .= $this->output->container_end();
@@ -1193,7 +1128,7 @@ class renderer extends \plugin_renderer_base {
      */
     public function render_assign_grading_table(\assign_grading_table $table) {
         $o = '';
-        $o .= $this->output->box_start('boxaligncenter gradingtable');
+        $o .= $this->output->box_start('boxaligncenter gradingtable position-relative');
 
         $this->page->requires->js_init_call('M.mod_assign.init_grading_table', array());
         $this->page->requires->string_for_js('nousersselected', 'assign');
@@ -1377,13 +1312,16 @@ class renderer extends \plugin_renderer_base {
         $submission = $status->teamsubmission ? $status->teamsubmission : $status->submission;
         $submissionstarted = $submission && property_exists($submission, 'timestarted') && $submission->timestarted;
         $timelimitenabled = get_config('assign', 'enabletimelimit') && $status->timelimit > 0 && $submissionstarted;
-        $duedatereached = $status->duedate > 0 && $status->duedate - $time <= 0;
+        // Define $duedate as latest between due date and extension - which is a possibility...
+        $extensionduedate = intval($status->extensionduedate);
+        $duedate = !empty($extensionduedate) ? max($status->duedate, $extensionduedate) : $status->duedate;
+        $duedatereached = $duedate > 0 && $duedate - $time <= 0;
         $timelimitenabledbeforeduedate = $timelimitenabled && !$duedatereached;
 
         // There is a submission, display the relevant early/late message.
         if ($submission && $submission->status == ASSIGN_SUBMISSION_STATUS_SUBMITTED) {
-            $latecalculation = $submission->timemodified - ($timelimitenabledbeforeduedate ? $submission->timecreated : 0);
-            $latethreshold = $timelimitenabledbeforeduedate ? $status->timelimit : $status->duedate;
+            $latecalculation = $submission->timemodified - ($timelimitenabledbeforeduedate ? $submission->timestarted : 0);
+            $latethreshold = $timelimitenabledbeforeduedate ? $status->timelimit : $duedate;
             $earlystring = $timelimitenabledbeforeduedate ? 'submittedundertime' : 'submittedearly';
             $latestring = $timelimitenabledbeforeduedate ? 'submittedovertime' : 'submittedlate';
             $ontime = $latecalculation <= $latethreshold;
@@ -1403,7 +1341,7 @@ class renderer extends \plugin_renderer_base {
                 get_string(
                     $status->submissionsenabled ? 'overdue' : 'duedatereached',
                     'assign',
-                    format_time($time - $status->duedate)
+                    format_time($time - $duedate)
                 ),
                 'overdue'
             ];
@@ -1418,7 +1356,7 @@ class renderer extends \plugin_renderer_base {
         }
 
         // Assignment is not overdue, and no submission has been made. Just display the due date.
-        return [get_string('paramtimeremaining', 'assign', format_time($status->duedate - $time)), 'timeremaining'];
+        return [get_string('paramtimeremaining', 'assign', format_time($duedate - $time)), 'timeremaining'];
     }
 
     /**
@@ -1467,11 +1405,13 @@ class renderer extends \plugin_renderer_base {
             $result .= '<li yuiConfig=\'' . json_encode($yuiconfig) . '\'>' .
                 '<div>' .
                     '<div class="fileuploadsubmission">' . $image . ' ' .
-                    $file->fileurl . ' ' .
+                    html_writer::link($tree->get_file_url($file), $file->get_filename(), [
+                        'target' => '_blank',
+                    ]) . ' ' .
                     $plagiarismlinks . ' ' .
-                    $file->portfoliobutton . ' ' .
+                    $this->get_portfolio_button($tree, $file) . ' ' .
                     '</div>' .
-                    '<div class="fileuploadsubmissiontime">' . $file->timemodified . '</div>' .
+                    '<div class="fileuploadsubmissiontime">' . $tree->get_modified_time($file) . '</div>' .
                 '</div>' .
             '</li>';
         }
@@ -1479,6 +1419,36 @@ class renderer extends \plugin_renderer_base {
         $result .= '</ul>';
 
         return $result;
+    }
+
+    /**
+     * Get the portfolio button content for the specified file.
+     *
+     * @param assign_files $tree
+     * @param stored_file $file
+     * @return string
+     */
+    protected function get_portfolio_button(assign_files $tree, stored_file $file): string {
+        global $CFG;
+        if (empty($CFG->enableportfolios)) {
+            return '';
+        }
+
+        if (!has_capability('mod/assign:exportownsubmission', $tree->context)) {
+            return '';
+        }
+
+        require_once($CFG->libdir . '/portfoliolib.php');
+
+        $button = new portfolio_add_button();
+        $portfolioparams = [
+            'cmid' => $tree->cm->id,
+            'fileid' => $file->get_id(),
+        ];
+        $button->set_callback_options('assign_portfolio_caller', $portfolioparams, 'mod_assign');
+        $button->set_format_by_file($file);
+
+        return (string) $button->to_html(PORTFOLIO_ADD_ICON_LINK);
     }
 
     /**

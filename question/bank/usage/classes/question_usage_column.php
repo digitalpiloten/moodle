@@ -28,30 +28,49 @@ use core_question\local\bank\column_base;
  */
 class question_usage_column extends column_base {
 
+    /**
+     * Include Javascript module.
+     *
+     * @return void
+     */
+    public function init(): void {
+        parent::init();
+        global $PAGE;
+        $PAGE->requires->js_call_amd('qbank_usage/usage', 'init', [
+            $this->qbank->is_listing_specific_versions()
+        ]);
+    }
+
     public function get_name(): string {
         return 'questionusage';
     }
 
-    protected function get_title(): string {
+    public function get_title(): string {
         return get_string('questionusage', 'qbank_usage');
     }
 
+    public function help_icon(): ?\help_icon {
+        return new \help_icon('questionusage', 'qbank_usage');
+    }
+
     protected function display_content($question, $rowclasses): void {
-        global $PAGE;
-        $usagecount = helper::get_question_entry_usage_count($question);
+        $usagecount = helper::get_question_entry_usage_count($question, $this->qbank->is_listing_specific_versions());
         $attributes = [];
         if (question_has_capability_on($question, 'view')) {
             $target = 'questionusagepreview_' . $question->id;
-            $datatarget = '[data-target="' . $target . '"]';
-            $PAGE->requires->js_call_amd('qbank_usage/usage', 'init', [$datatarget, $question->contextid]);
             $attributes = [
+                'href' => '#',
                 'data-target' => $target,
                 'data-questionid' => $question->id,
                 'data-courseid' => $this->qbank->course->id,
-                'class' => 'link-primary comment-pointer'
+                'data-contextid' => $question->contextid,
             ];
         }
         echo \html_writer::tag('a', $usagecount, $attributes);
+    }
+
+    public function get_extra_classes(): array {
+        return ['pr-3'];
     }
 
 }

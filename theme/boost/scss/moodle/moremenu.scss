@@ -12,7 +12,8 @@
         border-bottom: solid 3px transparent;
         border-left: none;
         border-top: none;
-        @include hover-focus() {
+        &:hover,
+        &:focus {
             @include hover-navbar();
         }
 
@@ -76,7 +77,8 @@
             }
             .dropdown-item {
                 background-color: $gray-100;
-                @include hover-focus() {
+                &:hover,
+                &:focus {
                     color: $dropdown-link-hover-color;
                     @include gradient-bg($dropdown-link-active-bg);
                 }
@@ -86,12 +88,13 @@
             }
         }
     }
-    /* TODO: MDL-72481: Update this style to also apply to aria-selected. */
+
     .dropdown-item[aria-current="true"],
     .dropdown-item.active {
         background-color: transparent;
         color: $dropdown-link-color;
-        &:focus-within {
+        &:focus-within,
+        &:hover {
             background-color: $dropdown-link-active-bg;
             color: $dropdown-link-active-color;
             a {
@@ -99,7 +102,8 @@
             }
         }
         &:before {
-            content: $fa-var-check;
+            @extend .fa-solid;
+            content: fa-content($fa-var-check);
         }
     }
 }

@@ -38,24 +38,21 @@ use core\check\result;
 class cronrunning extends check {
 
     /**
-     * Constructor
+     * A link the running tasks report
+     *
+     * @return action_link|null
      */
-    public function __construct() {
-        global $CFG;
-        $this->id = 'cronrunning';
-        $this->name = get_string('checkcronrunning', 'tool_task');
-        if (empty($CFG->cronclionly)) {
-            $this->actionlink = new \action_link(
-                new \moodle_url('/admin/cron.php'),
-                get_string('cron', 'admin'));
-        }
+    public function get_action_link(): ?\action_link {
+        return new \action_link(
+            new \moodle_url('/admin/tool/task/runningtasks.php'),
+            get_string('runningtasks', 'tool_task'));
     }
 
     /**
      * Return result
      * @return result
      */
-    public function get_result() : result {
+    public function get_result(): result {
         global $CFG;
 
         // Eventually this should replace cron_overdue_warning and
@@ -109,7 +106,8 @@ class cronrunning extends check {
             return new result($status, $summary, $details);
         }
 
-        if ($lastcroninterval > $expectedfrequency) {
+        // Add MINSECS to avoid spurious warning if cron is only a few seconds overdue.
+        if ($lastcroninterval > $expectedfrequency + MINSECS) {
             $status = result::WARNING;
             $summary = get_string('croninfrequent', 'admin', [
                 'actual'   => $formatinterval,

@@ -32,6 +32,7 @@ import SELECTORS from 'block_myoverview/selectors';
 import * as PagedContentEvents from 'core/paged_content_events';
 import * as Aria from 'core/aria';
 import {debounce} from 'core/utils';
+import {setUserPreference} from 'core_user/repository';
 
 const TEMPLATES = {
     COURSES_CARDS: 'block_myoverview/view-cards',
@@ -61,6 +62,16 @@ let lastPage = 0;
 let lastLimit = 0;
 
 let namespace = null;
+
+/**
+ * Whether the summary display has been loaded.
+ *
+ * If true, this means that courses have been loaded with the summary text.
+ * Otherwise, switching to the summary display mode will require course data to be fetched with the summary text.
+ *
+ * @type {boolean}
+ */
+let summaryDisplayLoaded = false;
 
 /**
  * Get filter values from DOM.
@@ -96,14 +107,21 @@ const DEFAULT_PAGED_CONTENT_CONFIG = {
  * @return {promise} Resolved with an array of courses.
  */
 const getMyCourses = (filters, limit) => {
-    return Repository.getEnrolledCoursesByTimeline({
+    const params = {
         offset: courseOffset,
         limit: limit,
         classification: filters.grouping,
         sort: filters.sort,
         customfieldname: filters.customfieldname,
-        customfieldvalue: filters.customfieldvalue
-    });
+        customfieldvalue: filters.customfieldvalue,
+    };
+    if (filters.display === 'summary') {
+        params.requiredfields = Repository.SUMMARY_REQUIRED_FIELDS;
+        summaryDisplayLoaded = true;
+    } else {
+        params.requiredfields = Repository.CARDLIST_REQUIRED_FIELDS;
+    }
+    return Repository.getEnrolledCoursesByTimeline(params);
 };
 
 /**
@@ -115,15 +133,23 @@ const getMyCourses = (filters, limit) => {
  * @return {promise} Resolved with an array of courses.
  */
 const getSearchMyCourses = (filters, limit, searchValue) => {
-    return Repository.getEnrolledCoursesByTimeline({
+    const params = {
         offset: courseOffset,
         limit: limit,
         classification: 'search',
         sort: filters.sort,
         customfieldname: filters.customfieldname,
         customfieldvalue: filters.customfieldvalue,
-        searchvalue: searchValue
-    });
+        searchvalue: searchValue,
+    };
+    if (filters.display === 'summary') {
+        params.requiredfields = Repository.SUMMARY_REQUIRED_FIELDS;
+        summaryDisplayLoaded = true;
+    } else {
+        params.requiredfields = Repository.CARDLIST_REQUIRED_FIELDS;
+        summaryDisplayLoaded = false;
+    }
+    return Repository.getEnrolledCoursesByTimeline(params);
 };
 
 /**
@@ -228,7 +254,7 @@ const addToFavourites = (root, courseId) => {
 
     setCourseFavouriteState(courseId, true).then(success => {
         if (success) {
-            PubSub.publish(CourseEvents.favorited, courseId);
+            PubSub.publish(CourseEvents.favourited, courseId);
             removeAction.removeClass('hidden');
             addAction.addClass('hidden');
             showFavouriteIcon(root, courseId);
@@ -343,14 +369,9 @@ const setCourseHiddenState = (courseId, status) => {
     if (status === false) {
         status = null;
     }
-    return Repository.updateUserPreferences({
-        preferences: [
-            {
-                type: 'block_myoverview_hidden_course_' + courseId,
-                value: status
-            }
-        ]
-    });
+
+    return setUserPreference(`block_myoverview_hidden_course_${courseId}`, status)
+        .catch(Notification.exception);
 };
 
 /**
@@ -436,7 +457,7 @@ const setCourseFavouriteState = (courseId, status) => {
         if (result.warnings.length === 0) {
             loadedPages.forEach(courseList => {
                 courseList.courses.forEach((course, index) => {
-                    if (course.id === courseId) {
+                    if (course.id == courseId) {
                         courseList.courses[index].isfavourite = status;
                     }
                 });
@@ -456,8 +477,10 @@ const setCourseFavouriteState = (courseId, status) => {
  */
 const noCoursesRender = root => {
     const nocoursesimg = root.find(SELECTORS.courseView.region).attr('data-nocoursesimg');
+    const newcourseurl = root.find(SELECTORS.courseView.region).attr('data-newcourseurl');
     return Templates.render(TEMPLATES.NOCOURSES, {
-        nocoursesimg: nocoursesimg
+        nocoursesimg: nocoursesimg,
+        newcourseurl: newcourseurl
     });
 };
 
@@ -549,7 +572,11 @@ const itemsPerPageFunc = (pagingLimit, root) => {
     // Filter out all pagination options which are too large for the amount of courses user is enrolled in.
     const totalCourseCount = parseInt(root.find(SELECTORS.courseView.region).attr('data-totalcoursecount'), 10);
     return itemsPerPage.filter(pagingOption => {
-        return pagingOption.value < totalCourseCount || pagingOption.value === 0;
+        if (pagingOption.value === 0 && totalCourseCount > 100) {
+            // To minimise performance issues, do not show the "All" option if the user is enrolled in more than 100 courses.
+            return false;
+        }
+        return pagingOption.value < totalCourseCount;
     });
 };
 
@@ -671,7 +698,6 @@ const initializePagedContent = (root, promiseFunction, inputValue = null) => {
     const pagingLimit = parseInt(root.find(SELECTORS.courseView.region).attr('data-paging'), 10);
     let itemsPerPage = itemsPerPageFunc(pagingLimit, root);
 
-    const filters = getFilterValues(root);
     const config = {...{}, ...DEFAULT_PAGED_CONTENT_CONFIG};
     config.eventNamespace = namespace;
 
@@ -705,6 +731,9 @@ const initializePagedContent = (root, promiseFunction, inputValue = null) => {
                         limit *= 2;
                     }
                 }
+
+                // Get the current applied filters.
+                const filters = getFilterValues(root);
 
                 // Call the curried function that'll handle the course promise and any manipulation of it.
                 promiseFunction(filters, currentPage, pageData, actions, root, promises, limit, inputValue);
@@ -767,45 +796,41 @@ const registerEventListeners = (root, page) => {
     // Searching functionality event handlers.
     const input = page.querySelector(SELECTORS.region.searchInput);
     const clearIcon = page.querySelector(SELECTORS.region.clearIcon);
-    const searchIcon = page.querySelector(SELECTORS.region.searchIcon);
 
     clearIcon.addEventListener('click', () => {
         input.value = '';
-        clearSearch(searchIcon, clearIcon, root);
+        input.focus();
+        clearSearch(clearIcon, root);
     });
 
     input.addEventListener('input', debounce(() => {
         if (input.value === '') {
-            clearSearch(searchIcon, clearIcon, root);
+            clearSearch(clearIcon, root);
         } else {
-            activeSearch(searchIcon, clearIcon);
+            activeSearch(clearIcon);
             initializePagedContent(root, searchFunctionalityCurry(), input.value.trim());
         }
-    }, 300));
+    }, 1000));
 };
 
 /**
  * Reset the search icon and trigger the init for the block.
  *
- * @param {HTMLElement} searchIcon Our search icon to manipulate.
  * @param {HTMLElement} clearIcon Our closing icon to manipulate.
  * @param {Object} root The myoverview block container element.
  */
-export const clearSearch = (searchIcon, clearIcon, root) => {
-    searchIcon.classList.remove('d-none');
-    clearIcon.parentElement.classList.add('d-none');
+export const clearSearch = (clearIcon, root) => {
+    clearIcon.classList.add('d-none');
     init(root);
 };
 
 /**
  * Change the searching icon to its' active state.
  *
- * @param {HTMLElement} searchIcon Our search icon to manipulate.
  * @param {HTMLElement} clearIcon Our closing icon to manipulate.
  */
-const activeSearch = (searchIcon, clearIcon) => {
-    searchIcon.classList.add('d-none');
-    clearIcon.parentElement.classList.remove('d-none');
+const activeSearch = (clearIcon) => {
+    clearIcon.classList.remove('d-none');
 };
 
 /**
@@ -840,12 +865,25 @@ export const init = root => {
  */
 export const reset = root => {
     if (loadedPages.length > 0) {
-        loadedPages.forEach((courseList, index) => {
-            let pagedContentPage = getPagedContentContainer(root, index);
-            renderCourses(root, courseList).then((html, js) => {
-                return Templates.replaceNodeContents(pagedContentPage, html, js);
-            }).catch(Notification.exception);
-        });
+        const filters = getFilterValues(root);
+        // If the display mode is changed to 'summary' but the summary display has not been loaded yet,
+        // we need to re-fetch the courses to include the course summary text.
+        if (filters.display === 'summary' && !summaryDisplayLoaded) {
+            const page = document.querySelector(SELECTORS.region.selectBlock);
+            const input = page.querySelector(SELECTORS.region.searchInput);
+            if (input.value !== '') {
+                initializePagedContent(root, searchFunctionalityCurry(), input.value.trim());
+            } else {
+                initializePagedContent(root, standardFunctionalityCurry());
+            }
+        } else {
+            loadedPages.forEach((courseList, index) => {
+                let pagedContentPage = getPagedContentContainer(root, index);
+                renderCourses(root, courseList).then((html, js) => {
+                    return Templates.replaceNodeContents(pagedContentPage, html, js);
+                }).catch(Notification.exception);
+            });
+        }
     } else {
         init(root);
     }

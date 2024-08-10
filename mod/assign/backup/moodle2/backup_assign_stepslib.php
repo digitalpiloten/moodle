@@ -55,7 +55,7 @@ class backup_assign_activity_structure_step extends backup_activity_structure_st
 
     /**
      * Define the structure for the assign activity
-     * @return void
+     * @return backup_nested_element
      */
     protected function define_structure() {
 
@@ -75,7 +75,6 @@ class backup_assign_activity_structure_step extends backup_activity_structure_st
                                                   'sendstudentnotifications',
                                                   'duedate',
                                                   'cutoffdate',
-                                                  'timelimit',
                                                   'gradingduedate',
                                                   'allowsubmissionsfromdate',
                                                   'grade',
@@ -92,7 +91,12 @@ class backup_assign_activity_structure_step extends backup_activity_structure_st
                                                   'maxattempts',
                                                   'markingworkflow',
                                                   'markingallocation',
-                                                  'preventsubmissionnotingroup'));
+                                                  'markinganonymous',
+                                                  'preventsubmissionnotingroup',
+                                                  'activity',
+                                                  'activityformat',
+                                                  'timelimit',
+                                                  'submissionattachments'));
 
         $userflags = new backup_nested_element('userflags');
 
@@ -137,7 +141,7 @@ class backup_assign_activity_structure_step extends backup_activity_structure_st
 
         $overrides = new backup_nested_element('overrides');
         $override = new backup_nested_element('override', array('id'), array(
-            'groupid', 'userid', 'sortorder', 'allowsubmissionsfromdate', 'duedate', 'cutoffdate'));
+            'groupid', 'userid', 'sortorder', 'allowsubmissionsfromdate', 'duedate', 'cutoffdate', 'timelimit'));
 
         // Build the tree.
         $assign->add_child($userflags);
@@ -201,6 +205,8 @@ class backup_assign_activity_structure_step extends backup_activity_structure_st
         // These file areas don't have an itemid.
         $assign->annotate_files('mod_assign', 'intro', null);
         $assign->annotate_files('mod_assign', 'introattachment', null);
+        $assign->annotate_files('mod_assign', 'activityattachment', null);
+
         $this->annotate_plugin_config_files($assign, 'assignsubmission');
         $this->annotate_plugin_config_files($assign, 'assignfeedback');
 

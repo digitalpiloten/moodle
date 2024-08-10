@@ -24,10 +24,11 @@
 
 namespace core_courseformat\output\local\content;
 
-use core_courseformat\base as course_format;
-use renderable;
-use templatable;
 use context_course;
+use core\output\named_templatable;
+use core_courseformat\base as course_format;
+use core_courseformat\output\local\courseformat_named_templatable;
+use renderable;
 use stdClass;
 
 /**
@@ -37,7 +38,9 @@ use stdClass;
  * @copyright 2020 Ferran Recio <ferran@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class sectionnavigation implements renderable, templatable {
+class sectionnavigation implements named_templatable, renderable {
+
+    use courseformat_named_templatable;
 
     /** @var course_format the course format class */
     protected $format;
@@ -91,13 +94,13 @@ class sectionnavigation implements renderable, templatable {
         ];
 
         $back = $this->sectionno - 1;
-        while ($back > 0 and empty($data->previousurl)) {
+        while ($back >= 0 && empty($data->previousurl)) {
             if ($canviewhidden || $sections[$back]->uservisible) {
                 if (!$sections[$back]->visible) {
                     $data->previoushidden = true;
                 }
                 $data->previousname = get_section_name($course, $sections[$back]);
-                $data->previousurl = course_get_url($course, $back);
+                $data->previousurl = course_get_url($course, $back, ['navigation' => true]);
                 $data->hasprevious = true;
             }
             $back--;
@@ -111,7 +114,7 @@ class sectionnavigation implements renderable, templatable {
                     $data->nexthidden = true;
                 }
                 $data->nextname = get_section_name($course, $sections[$forward]);
-                $data->nexturl = course_get_url($course, $forward);
+                $data->nexturl = course_get_url($course, $forward, ['navigation' => true]);
                 $data->hasnext = true;
             }
             $forward++;

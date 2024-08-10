@@ -1,4 +1,4 @@
-@mod @mod_h5pactivity @core_h5p @_file_upload @_switch_iframe
+@mod @mod_h5pactivity @core_h5p @_switch_iframe
 Feature: Content bank link in the activity settings form
   In order to have direct access to the Content bank
   As a teacher
@@ -21,11 +21,12 @@ Feature: Content bank link in the activity settings form
   @javascript
   Scenario: The content bank link should go to the course Content bank
     When I log in as "teacher1"
-    And I am on "Course 1" course homepage with editing mode on
-    And I add a "H5P" to section "1"
+    And I add an h5pactivity activity to course "Course 1" section "1"
     Then I should see "Use the content bank (opens in new window) to manage your H5P files"
     And I click on "content bank (opens in new window)" "link" in the "General" "fieldset"
-    And I should see "C1" in the "page-navbar" "region"
+    And I switch to a second window
+    And I should see "Content bank" in the "page-content" "region"
+    And I should see "filltheblanks.h5p" in the "page-content" "region"
     And I close all opened windows
 
   @javascript
@@ -34,15 +35,13 @@ Feature: Content bank link in the activity settings form
       | capability                 | permission | role           | contextlevel | reference |
       | moodle/contentbank:access  | Prevent    | editingteacher | Course       | C1        |
     When I log in as "teacher1"
-    And I am on "Course 1" course homepage with editing mode on
-    And I add a "H5P" to section "1"
+    And I add an h5pactivity activity to course "Course 1" section "1"
     Then I should not see "Use the content Bank (opens in new window) to manage your H5P files"
 
   @javascript
   Scenario: A different message should be displayed if the package file is a link to the content bank file
     Given I log in as "admin"
-    And I am on "Course 1" course homepage with editing mode on
-    And I add a "H5P" to section "1"
+    And I add an h5pactivity activity to course "Course 1" section "1"
     And I set the following fields to these values:
       | Name                       | H5P package added with link to content bank |
       | Description                | Description                                 |
@@ -64,8 +63,7 @@ Feature: Content bank link in the activity settings form
   @javascript
   Scenario: The content bank link should go to the course Content bank if the file is a copy to a content bank file
     Given I log in as "admin"
-    And I am on "Course 1" course homepage with editing mode on
-    And I add a "H5P" to section "1"
+    And I add an h5pactivity activity to course "Course 1" section "1"
     And I set the following fields to these values:
       | Name                       | H5P package added with link to content bank |
       | Description                | Description                                 |
@@ -84,12 +82,11 @@ Feature: Content bank link in the activity settings form
 
   @javascript
   Scenario: The content bank link should go to the course Content bank if the file is referenced but to another repository
-    Given I log in as "admin"
-    And I follow "Manage private files..."
-    And I upload "h5p/tests/fixtures/guess-the-answer.h5p" file to "Files" filemanager
-    And I click on "Save changes" "button"
-    And I am on "Course 1" course homepage with editing mode on
-    And I add a "H5P" to section "1"
+    Given the following "user private file" exists:
+      | user     | admin                                   |
+      | filepath | h5p/tests/fixtures/guess-the-answer.h5p |
+    When I log in as "admin"
+    And I add an h5pactivity activity to course "Course 1" section "1"
     And I set the following fields to these values:
       | Name                       | H5P package added with link to content bank |
       | Description                | Description                                 |
@@ -103,5 +100,5 @@ Feature: Content bank link in the activity settings form
     And I switch to "h5p-iframe" class iframe
     And I should see "Which fruit is this?"
     And I switch to the main frame
-    When I navigate to "Settings" in current page administration
+    And I navigate to "Settings" in current page administration
     Then I should see "Use the content bank (opens in new window) to manage your H5P files"

@@ -25,6 +25,10 @@
 
 namespace core_webservice;
 
+use core_user;
+use DateInterval;
+use DateTime;
+
 /**
  * Form to create and edit a web service token.
  *
@@ -47,16 +51,20 @@ class token_form extends \moodleform {
 
         $mform->addElement('header', 'token', get_string('token', 'webservice'));
 
+        $mform->addElement('text', 'name', get_string('tokenname', 'webservice'));
+        $mform->setType('name', PARAM_TEXT);
+        $mform->addElement('static', 'tokennamehint', '', get_string('tokennamehint', 'webservice'));
+
         // User selector.
         $attributes = [
             'multiple' => false,
             'ajax' => 'core_user/form_user_selector',
             'valuehtmlcallback' => function($userid) {
-                global $DB, $OUTPUT;
+                global $OUTPUT;
 
                 $context = \context_system::instance();
                 $fields = \core_user\fields::for_name()->with_identity($context, false);
-                $record = $DB->get_record('user', ['id' => $userid], $fields, MUST_EXIST);
+                $record = core_user::get_user($userid, 'id ' . $fields->get_sql()->selects, MUST_EXIST);
 
                 $user = (object)[
                     'id' => $record->id,
@@ -88,6 +96,10 @@ class token_form extends \moodleform {
 
         $mform->addElement('date_selector', 'validuntil',
                 get_string('validuntil', 'webservice'), array('optional' => true));
+        // Expires in 30 days.
+        $expires = new DateTime();
+        $expires->add(new DateInterval("P30D"));
+        $mform->setDefault('validuntil', $expires->getTimestamp());
         $mform->setType('validuntil', PARAM_INT);
 
         $mform->addElement('hidden', 'action');

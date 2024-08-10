@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+use core_external\external_api;
+use core_external\external_multiple_structure;
+use core_external\external_single_structure;
 
 /**
  * Web service documentation renderer.
@@ -123,7 +126,7 @@ class core_webservice_renderer extends plugin_renderer_base {
             $link = html_writer::link($settingsurl, fullname($user));
 
             if (!empty($user->missingcapabilities)) {
-                $count = html_writer::span(count($user->missingcapabilities), 'badge badge-danger');
+                $count = html_writer::span(count($user->missingcapabilities), 'badge bg-danger text-white');
                 $links = array_map(function($capname) {
                     return get_capability_docs_link((object)['name' => $capname]) . html_writer::div($capname, 'text-muted');
                 }, $user->missingcapabilities);
@@ -263,15 +266,10 @@ class core_webservice_renderer extends plugin_renderer_base {
      * @return string html
      */
     public function user_reset_token_confirmation($token) {
-        global $CFG;
-        $managetokenurl = $CFG->wwwroot . "/user/managetoken.php?sesskey=" . sesskey();
-        $optionsyes = array('tokenid' => $token->id, 'action' => 'resetwstoken', 'confirm' => 1,
-            'sesskey' => sesskey());
-        $optionsno = array('section' => 'webservicetokens', 'sesskey' => sesskey());
-        $formcontinue = new single_button(new moodle_url($managetokenurl, $optionsyes),
-                        get_string('reset'));
-        $formcancel = new single_button(new moodle_url($managetokenurl, $optionsno),
-                        get_string('cancel'), 'get');
+        $managetokenurl = '/user/managetoken.php';
+        $optionsyes = ['tokenid' => $token->id, 'action' => 'resetwstoken', 'confirm' => 1];
+        $formcontinue = new single_button(new moodle_url($managetokenurl, $optionsyes), get_string('reset'));
+        $formcancel = new single_button(new moodle_url($managetokenurl), get_string('cancel'), 'get');
         $html = $this->output->confirm(get_string('resettokenconfirm', 'webservice',
                                 (object) array('user' => $token->firstname . " " .
                                     $token->lastname, 'service' => $token->name)),
@@ -292,11 +290,11 @@ class core_webservice_renderer extends plugin_renderer_base {
 
         // display strings
         $stroperation = get_string('operation', 'webservice');
-        $strtoken = get_string('key', 'webservice');
+        $strtoken = get_string('tokenname', 'webservice');
         $strservice = get_string('service', 'webservice');
         $strcreator = get_string('tokencreator', 'webservice');
-        $strcontext = get_string('context', 'webservice');
         $strvaliduntil = get_string('validuntil', 'webservice');
+        $strlastaccess = get_string('lastaccess');
 
         $return = $this->output->heading(get_string('securitykeys', 'webservice'), 3, 'main', true);
         $return .= $this->output->box_start('generalbox webservicestokenui');
@@ -304,8 +302,8 @@ class core_webservice_renderer extends plugin_renderer_base {
         $return .= get_string('keyshelp', 'webservice');
 
         $table = new html_table();
-        $table->head = array($strtoken, $strservice, $strvaliduntil, $strcreator, $stroperation);
-        $table->align = array('left', 'left', 'left', 'center', 'left', 'center');
+        $table->head = array($strtoken, $strservice, $strvaliduntil, $strlastaccess, $strcreator, $stroperation);
+        $table->align = array('left', 'left', 'left', 'center', 'center', 'left', 'center');
         $table->width = '100%';
         $table->data = array();
 
@@ -318,9 +316,10 @@ class core_webservice_renderer extends plugin_renderer_base {
             foreach ($tokens as $token) {
 
                 if ($token->creatorid == $userid) {
-                    $reset = "<a href=\"" . $CFG->wwwroot . "/user/managetoken.php?sesskey="
-                            . sesskey() . "&amp;action=resetwstoken&amp;tokenid=" . $token->id . "\">";
-                    $reset .= get_string('reset') . "</a>";
+                    $reset = html_writer::link(new moodle_url('/user/managetoken.php', [
+                        'action' => 'resetwstoken',
+                        'tokenid' => $token->id,
+                    ]), get_string('reset'));
                     $creator = $token->firstname . " " . $token->lastname;
                 } else {
                     //retrieve administrator name
@@ -339,15 +338,20 @@ class core_webservice_renderer extends plugin_renderer_base {
                     $validuntil = userdate($token->validuntil, get_string('strftimedatetime', 'langconfig'));
                 }
 
-                $tokenname = $token->name;
-                if (!$token->enabled) { //that is the (1 token-1ws) related ws is not enabled.
-                    $tokenname = '<span class="dimmed_text">'.$token->name.'</span>';
+                $lastaccess = '';
+                if (!empty($token->lastaccess)) {
+                    $lastaccess = userdate($token->lastaccess, get_string('strftimedatetime', 'langconfig'));
                 }
-                $row = array($token->token, $tokenname, $validuntil, $creatoratag, $reset);
+
+                $servicename = $token->servicename;
+                if (!$token->enabled) { // That is the (1 token-1ws) related ws is not enabled.
+                    $servicename = '<span class="dimmed_text">'.$token->servicename.'</span>';
+                }
+                $row = array($token->tokenname, $servicename, $validuntil, $lastaccess, $creatoratag, $reset);
 
                 if ($documentation) {
                     $doclink = new moodle_url('/webservice/wsdoc.php',
-                            array('id' => $token->id, 'sesskey' => sesskey()));
+                            array('id' => $token->id));
                     $row[] = html_writer::tag('a', get_string('doc', 'webservice'),
                             array('href' => $doclink));
                 }
@@ -501,6 +505,8 @@ EOF;
     /**
      * Create indented XML-RPC  param description
      *
+     * @todo MDL-76078 - Incorrect inter-communication, core cannot have plugin dependencies like this.
+     *
      * @param external_description $paramdescription the description structure of the web service function parameters
      * @param string $indentation Indentation in the generated HTML code; should contain only spaces.
      * @return string the html to diplay
@@ -559,7 +565,6 @@ EOF;
      * @return string HTML code
      */
     public function colored_box_with_pre_tag($title, $content, $rgb = 'FEEBE5') {
-        //TODO MDL-31192 this tag removes xhtml strict error but cause warning
         $coloredbox = html_writer::start_tag('div', array());
         $coloredbox .= html_writer::start_tag('div',
                         array('style' => "border:solid 1px #DEDEDE;background:#" . $rgb
@@ -578,6 +583,8 @@ EOF;
 
     /**
      * Return indented REST param description
+     *
+     * @todo MDL-76078 - Incorrect inter-communication, core cannot have plugin dependencies like this.
      *
      * @param external_description $paramdescription the description structure of the web service function parameters
      * @param string $paramstring parameter
@@ -624,6 +631,8 @@ EOF;
     /**
      * Displays all the documentation
      *
+     * @todo MDL-76078 - Incorrect inter-communication, core cannot have plugin dependencies like this.
+     *
      * @param array $functions external_description of all the web service functions
      * @param boolean $printableformat true if we want to display the documentation in a printable format
      * @param array $activatedprotocol the currently enabled protocol
@@ -662,16 +671,21 @@ EOF;
         //(opened if printableformat = true)
         foreach ($functions as $functionname => $description) {
 
+            $tags = '';
+            if (!empty($description->deprecated)) {
+                $tags .= ' ' . html_writer::span(get_string('deprecated', 'core_webservice'), 'badge bg-warning text-dark');
+            }
+
             if (empty($printableformat)) {
                 $documentationhtml .= print_collapsible_region_start('',
                                 'aera_' . $functionname,
                                 html_writer::start_tag('strong', array())
-                                . $functionname . html_writer::end_tag('strong'),
+                                . $functionname . html_writer::end_tag('strong') . $tags,
                                 false,
                                 !$printableformat,
                                 true);
             } else {
-                $documentationhtml .= html_writer::tag('strong', $functionname);
+                $documentationhtml .= html_writer::tag('strong', $functionname) . $tags;
                 $documentationhtml .= $br;
             }
 
@@ -691,7 +705,7 @@ EOF;
             $documentationhtml .= $br;
             foreach ($description->parameters_desc->keys as $paramname => $paramdesc) {
                 // a argument documentation
-                $documentationhtml .= html_writer::start_tag('span', array('style' => 'font-size:80%'));
+                $documentationhtml .= html_writer::start_tag('div', ['style' => 'font-size:80%']);
 
                 if ($paramdesc->required == VALUE_REQUIRED) {
                     $required = get_string('required', 'webservice');
@@ -726,7 +740,7 @@ EOF;
                     $documentationhtml .= $this->colored_box_with_pre_tag(
                                     get_string('phpparam', 'webservice'),
                                     htmlentities('[' . $paramname . '] =>'
-                                            . $this->xmlrpc_param_description_html($paramdesc)),
+                                            . $this->xmlrpc_param_description_html($paramdesc), ENT_COMPAT),
                                     'DFEEE7');
                 }
                 // POST format for the REST protocol for the argument
@@ -734,10 +748,10 @@ EOF;
                     $documentationhtml .= $this->colored_box_with_pre_tag(
                                     get_string('restparam', 'webservice'),
                                     htmlentities($this->rest_param_description_html(
-                                                    $paramdesc, $paramname)),
+                                                    $paramdesc, $paramname), ENT_COMPAT),
                                     'FEEBE5');
                 }
-                $documentationhtml .= html_writer::end_tag('span');
+                $documentationhtml .= html_writer::end_tag('div');
             }
             $documentationhtml .= $br . $br;
 
@@ -748,7 +762,7 @@ EOF;
             $documentationhtml .= html_writer::end_tag('span');
             $documentationhtml .= $br;
             // function response description
-            $documentationhtml .= html_writer::start_tag('span', array('style' => 'font-size:80%'));
+            $documentationhtml .= html_writer::start_tag('div', ['style' => 'font-size:80%']);
             if (!empty($description->returns_desc->desc)) {
                 $documentationhtml .= $description->returns_desc->desc;
                 $documentationhtml .= $br . $br;
@@ -764,7 +778,7 @@ EOF;
                     $documentationhtml .= $this->colored_box_with_pre_tag(
                                     get_string('phpresponse', 'webservice'),
                                     htmlentities($this->xmlrpc_param_description_html(
-                                                    $description->returns_desc)),
+                                                    $description->returns_desc), ENT_COMPAT),
                                     'DFEEE7');
                 }
                 // XML response for the REST protocol
@@ -776,11 +790,11 @@ EOF;
                     $restresponse .="</RESPONSE>" . $brakeline;
                     $documentationhtml .= $this->colored_box_with_pre_tag(
                                     get_string('restcode', 'webservice'),
-                                    htmlentities($restresponse),
+                                    htmlentities($restresponse, ENT_COMPAT),
                                     'FEEBE5');
                 }
             }
-            $documentationhtml .= html_writer::end_tag('span');
+            $documentationhtml .= html_writer::end_tag('div');
             $documentationhtml .= $br . $br;
 
             // function errors documentation for REST protocol
@@ -789,7 +803,7 @@ EOF;
                 $documentationhtml .= get_string('errorcodes', 'webservice');
                 $documentationhtml .= html_writer::end_tag('span');
                 $documentationhtml .= $br . $br;
-                $documentationhtml .= html_writer::start_tag('span', array('style' => 'font-size:80%'));
+                $documentationhtml .= html_writer::start_tag('div', ['style' => 'font-size:80%']);
                 $errormessage = get_string('invalidparameter', 'debug');
                 $restexceptiontext = <<<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -800,10 +814,10 @@ EOF;
 EOF;
                 $documentationhtml .= $this->colored_box_with_pre_tag(
                                 get_string('restexception', 'webservice'),
-                                htmlentities($restexceptiontext),
+                                htmlentities($restexceptiontext, ENT_COMPAT),
                                 'FEEBE5');
 
-                $documentationhtml .= html_writer::end_tag('span');
+                $documentationhtml .= html_writer::end_tag('div');
             }
             $documentationhtml .= $br . $br;
 

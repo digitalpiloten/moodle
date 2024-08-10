@@ -163,7 +163,6 @@ Feature: Assign user override
       | student2 | G2    |
     And I am on the "Assignment 2" Activity page logged in as teacher1
     When I navigate to "Overrides" in current page administration
-    And I select "User overrides" from the "jump" singleselect
     And I press "Add user override"
     Then the "Override user" select box should contain "Sam1 Student1, student1@example.com"
     And the "Override user" select box should not contain "Sam2 Student2, student2@example.com"
@@ -188,7 +187,6 @@ Feature: Assign user override
       | student2 | G2    |
     And I am on the "Assignment 2" Activity page logged in as admin
     And I navigate to "Overrides" in current page administration
-    And I select "User overrides" from the "jump" singleselect
     And I press "Add user override"
     And I set the following fields to these values:
       | Override user          | Student1                            |
@@ -202,7 +200,6 @@ Feature: Assign user override
 
     And I am on the "Assignment 2" Activity page logged in as teacher1
     When I navigate to "Overrides" in current page administration
-    And I select "User overrides" from the "jump" singleselect
     Then I should see "Student1" in the ".generaltable" "css_element"
     But I should not see "Student2" in the ".generaltable" "css_element"
 
@@ -211,7 +208,7 @@ Feature: Assign user override
     Given I am on the "Test assignment name" Activity page logged in as teacher1
     And I navigate to "Settings" in current page administration
     And I expand all fieldsets
-    And I set the field "Availability" to "Hide from students"
+    And I set the field "Availability" to "Hide on course page"
     And I click on "Save and display" "button"
     When I navigate to "Overrides" in current page administration
     And I press "Add user override"

@@ -14,14 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * mod_h5pactivity generator tests
- *
- * @package    mod_h5pactivity
- * @category   test
- * @copyright  2020 Ferran Recio <ferran@moodle.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+namespace mod_h5pactivity;
 
 use mod_h5pactivity\local\manager;
 
@@ -33,12 +26,12 @@ use mod_h5pactivity\local\manager;
  * @copyright  2020 Ferran Recio <ferran@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class mod_h5pactivity_generator_testcase extends advanced_testcase {
+final class generator_test extends \advanced_testcase {
 
     /**
      * Test on H5P activity creation.
      */
-    public function test_create_instance() {
+    public function test_create_instance(): void {
         global $DB, $CFG, $USER;
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -81,7 +74,7 @@ class mod_h5pactivity_generator_testcase extends advanced_testcase {
             'course' => $course->id,
             'packagefile' => file_get_unused_draft_itemid()
         ];
-        $usercontext = context_user::instance($USER->id);
+        $usercontext = \context_user::instance($USER->id);
         $filerecord = ['component' => 'user', 'filearea' => 'draft',
                 'contextid' => $usercontext->id, 'itemid' => $params['packagefile'],
                 'filename' => 'singlescobasic.zip', 'filepath' => '/'];
@@ -94,7 +87,7 @@ class mod_h5pactivity_generator_testcase extends advanced_testcase {
      * Test that a new H5P activity cannot be generated without a valid file
      * other user.
      */
-    public function test_create_file_exception() {
+    public function test_create_file_exception(): void {
         global $CFG;
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -106,7 +99,7 @@ class mod_h5pactivity_generator_testcase extends advanced_testcase {
             'course' => $course->id,
             'packagefilepath' => $CFG->dirroot.'/h5p/tests/fixtures/wrong_file_.xxx'
         ];
-        $this->expectException(coding_exception::class);
+        $this->expectException(\coding_exception::class);
         $activity = $this->getDataGenerator()->create_module('h5pactivity', $params);
     }
 
@@ -121,7 +114,7 @@ class mod_h5pactivity_generator_testcase extends advanced_testcase {
      * @param bool $exception if an exception is expected
      *
      */
-    public function test_create_attempt(array $tracks, int $attempts, int $results, bool $exception) {
+    public function test_create_attempt(array $tracks, int $attempts, int $results, bool $exception): void {
         global $DB;
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -134,7 +127,7 @@ class mod_h5pactivity_generator_testcase extends advanced_testcase {
         $this->assertEquals(0, $DB->count_records('h5pactivity_attempts_results'));
 
         if ($exception) {
-            $this->expectException(Exception::class);
+            $this->expectException(\Exception::class);
         }
 
         foreach ($tracks as $track) {
@@ -165,7 +158,7 @@ class mod_h5pactivity_generator_testcase extends advanced_testcase {
      *
      * @return array
      */
-    public function create_attempt_data(): array {
+    public static function create_attempt_data(): array {
         return [
             'Compound statement' => [
                 [
@@ -219,14 +212,6 @@ class mod_h5pactivity_generator_testcase extends advanced_testcase {
                 [
                     [
                         'interactiontype' => 'sequencing', 'attempt' => 1, 'rawscore' => 2,
-                        'maxscore' => 2, 'duration' => 1, 'completion' => 1, 'success' => 0
-                    ],
-                ], 1, 1, false,
-            ],
-            'Other statement' => [
-                [
-                    [
-                        'interactiontype' => 'other', 'attempt' => 1, 'rawscore' => 2,
                         'maxscore' => 2, 'duration' => 1, 'completion' => 1, 'success' => 0
                     ],
                 ], 1, 1, false,
@@ -320,7 +305,7 @@ class mod_h5pactivity_generator_testcase extends advanced_testcase {
      * @param bool $validmod if the activity id is provided
      * @param bool $validuser if the user id is provided
      */
-    public function test_create_attempt_exceptions(bool $validmod, bool $validuser) {
+    public function test_create_attempt_exceptions(bool $validmod, bool $validuser): void {
         global $DB;
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -329,7 +314,7 @@ class mod_h5pactivity_generator_testcase extends advanced_testcase {
         $activity = $this->getDataGenerator()->create_module('h5pactivity', ['course' => $course]);
         $user = $this->getDataGenerator()->create_and_enrol($course, 'student');
 
-        $this->expectException(coding_exception::class);
+        $this->expectException(\coding_exception::class);
 
         $attemptinfo = [
             'attempt' => 1,
@@ -358,7 +343,7 @@ class mod_h5pactivity_generator_testcase extends advanced_testcase {
      *
      * @return array
      */
-    public function create_attempt_exceptions_data(): array {
+    public static function create_attempt_exceptions_data(): array {
         return [
             'Invalid user'                  => [true, false],
             'Invalid activity'              => [false, true],

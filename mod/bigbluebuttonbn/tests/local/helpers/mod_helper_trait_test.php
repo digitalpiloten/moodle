@@ -44,7 +44,7 @@ class mod_helper_trait_test extends \advanced_testcase {
     /**
      * Presave test
      */
-    public function test_process_pre_save() {
+    public function test_process_pre_save(): void {
         $this->resetAfterTest();
         list($bbactivitycontext, $bbactivitycm, $bbactivity) = $this->create_instance();
         $bbformdata = $this->get_form_data_from_instance($bbactivity);
@@ -58,7 +58,7 @@ class mod_helper_trait_test extends \advanced_testcase {
     /**
      * Presave instance
      */
-    public function test_process_pre_save_instance() {
+    public function test_process_pre_save_instance(): void {
         $this->resetAfterTest();
         list($bbactivitycontext, $bbactivitycm, $bbactivity) = $this->create_instance();
         $bbformdata = $this->get_form_data_from_instance($bbactivity);
@@ -71,7 +71,7 @@ class mod_helper_trait_test extends \advanced_testcase {
     /**
      * Presave checkboxes
      */
-    public function test_process_pre_save_checkboxes() {
+    public function test_process_pre_save_checkboxes(): void {
         $this->resetAfterTest();
         list($bbactivitycontext, $bbactivitycm, $bbactivity) = $this->create_instance();
         $bbformdata = $this->get_form_data_from_instance($bbactivity);
@@ -85,7 +85,7 @@ class mod_helper_trait_test extends \advanced_testcase {
     /**
      * Presave common
      */
-    public function test_process_pre_save_common() {
+    public function test_process_pre_save_common(): void {
         global $CFG;
         $this->resetAfterTest();
 
@@ -101,12 +101,15 @@ class mod_helper_trait_test extends \advanced_testcase {
     /**
      * Post save
      */
-    public function test_process_post_save() {
+    public function test_process_post_save(): void {
         $this->resetAfterTest();
 
         $generator = $this->getDataGenerator();
         list($bbactivitycontext, $bbactivitycm, $bbactivity) =
             $this->create_instance(null, ['type' => instance::TYPE_RECORDING_ONLY]);
+        // Reset some static caches used by this test after enabling the plugin.
+        get_module_types_names(false, true);
+
         $bbformdata = $this->get_form_data_from_instance($bbactivity);
 
         // Enrol users in a course so he will receive the message.
@@ -114,40 +117,53 @@ class mod_helper_trait_test extends \advanced_testcase {
         $generator->enrol_user($teacher->id, $this->get_course()->id);
 
         // Mark the form to trigger notification.
-        $bbformdata->notification = true;
+        $bbformdata->coursecontentnotification = true;
+        $bbformdata->update = false;
         $messagesink = $this->redirectMessages();
         mod_helper::process_post_save($bbformdata);
+        edit_module_post_actions($bbformdata, $this->course);
         // Now run cron.
         ob_start();
         $this->runAdhocTasks();
         ob_get_clean(); // Suppress output as it can fail the test.
         $this->assertEquals(1, $messagesink->count());
+        $firstmessage = $messagesink->get_messages()[0];
+        $this->assertStringContainsString('is new in', $firstmessage->smallmessage);
     }
 
     /**
      * Post save notification
      */
-    public function test_process_post_save_with_add() {
+    public function test_process_post_save_with_add(): void {
         $this->resetAfterTest();
 
         $generator = $this->getDataGenerator();
         list($bbactivitycontext, $bbactivitycm, $bbactivity) =
             $this->create_instance(null, ['type' => instance::TYPE_RECORDING_ONLY]);
+        // Reset some static caches used by this test after enabling the plugin.
+        get_module_types_names(false, true);
+
         $bbformdata = $this->get_form_data_from_instance($bbactivity);
 
-        $bbformdata->add = "1";
-
+        $bbformdata->update = false;
         $messagesink = $this->redirectMessages();
         // Enrol users in a course so he will receive the message.
         $teacher = $generator->create_user(['role' => 'editingteacher']);
         $generator->enrol_user($teacher->id, $this->get_course()->id);
-        $bbformdata->notification = true;
+        $bbformdata->coursecontentnotification = true;
         mod_helper::process_post_save($bbformdata);
+        edit_module_post_actions($bbformdata, $this->course);
         // Now run cron.
         ob_start();
         $this->runAdhocTasks();
         ob_get_clean(); // Suppress output as it can fail the test.
-        $this->assertEquals(1, $messagesink->count());
+        $messages = $messagesink->get_messages_by_component_and_type(
+            component: 'core',
+            type: 'coursecontentupdated',
+        );
+        $this->assertEquals(1, count($messages));
+        $firstmessage = reset($messages);
+        $this->assertStringContainsString('is new in', $firstmessage->smallmessage);
     }
 
     /**
@@ -156,12 +172,15 @@ class mod_helper_trait_test extends \advanced_testcase {
      * There was an issue when both the opening time and completion were set
      * and the form was saved twice.
      */
-    public function test_process_post_save_twice_with_completion() {
+    public function test_process_post_save_twice_with_completion(): void {
         $this->resetAfterTest();
 
         $generator = $this->getDataGenerator();
         list($bbactivitycontext, $bbactivitycm, $bbactivity) =
             $this->create_instance(null, ['type' => instance::TYPE_RECORDING_ONLY]);
+        // Reset some static caches used by this test after enabling the plugin.
+        get_module_types_names(false, true);
+
         $bbformdata = $this->get_form_data_from_instance($bbactivity);
         $bbformdata->completionunlocked = 0;
         $bbformdata->completion = COMPLETION_AGGREGATION_ANY;
@@ -170,20 +189,34 @@ class mod_helper_trait_test extends \advanced_testcase {
         $bbformdata->openingtime = time() - 1000;
         $bbformdata->closing = time() + 1000;
         // Enrol users in a course so he will receive the message.
-        $teacher = $generator->create_user(['role' => 'editingteacher']);
-        $generator->enrol_user($teacher->id, $this->get_course()->id);
-
+        $teacher = $generator->create_user();
+        $generator->enrol_user($teacher->id, $this->get_course()->id, 'editingteacher');
+        $this->setUser($teacher);
         // Mark the form to trigger notification.
-        $bbformdata->notification = true;
+        $bbformdata->coursecontentnotification = true;
+        $bbformdata->update = false;
         $messagesink = $this->redirectMessages();
         mod_helper::process_post_save($bbformdata);
+        edit_module_post_actions($bbformdata, $this->course);
         // Now run cron.
         ob_start();
         $this->runAdhocTasks();
         ob_get_clean(); // Suppress output as it can fail the test.
         $this->assertEquals(1, $messagesink->count());
-        // Do it a again, so we check we still have one event of type EVENT_MEETING_START.
+        $firstmessage = $messagesink->get_messages()[0];
+        $this->assertStringContainsString('is new in', $firstmessage->smallmessage);
+        $messagesink->clear();
+        // Do it a again, so we check we still have one event.
         mod_helper::process_post_save($bbformdata);
+        // Mark the form to trigger notification.
+        $bbformdata->update = true;
+        edit_module_post_actions($bbformdata, $this->course);
+        // Now run cron.
+        ob_start();
+        $this->runAdhocTasks();
+        ob_get_clean(); // Suppress output as it can fail the test.
         $this->assertEquals(1, $messagesink->count());
+        $firstmessage = $messagesink->get_messages()[0];
+        $this->assertStringContainsString('has been changed', $firstmessage->smallmessage);
     }
 }

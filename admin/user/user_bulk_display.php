@@ -8,7 +8,8 @@ $dir  = optional_param('dir', 'asc', PARAM_ALPHA);
 
 admin_externalpage_setup('userbulk');
 
-$return = $CFG->wwwroot.'/'.$CFG->admin.'/user/user_bulk.php';
+$returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
+$return = new moodle_url($returnurl ?: '/admin/user/user_bulk.php');
 
 if (empty($SESSION->bulk_users)) {
     redirect($return);
@@ -19,6 +20,9 @@ $usertotal = get_users(false);
 $usercount = count($users);
 
 $strnever = get_string('never');
+
+$PAGE->set_primary_active_tab('siteadminnode');
+$PAGE->set_secondary_active_tab('users');
 
 echo $OUTPUT->header();
 

@@ -14,15 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Test classes for handling embedded media.
- *
- * @package media_vimeo
- * @copyright 2016 Marina Glancy
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+namespace media_vimeo;
 
-defined('MOODLE_INTERNAL') || die();
+use core_media_manager;
 
 /**
  * Test script for media embedding.
@@ -31,7 +25,7 @@ defined('MOODLE_INTERNAL') || die();
  * @copyright 2016 Marina Glancy
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class media_vimeo_testcase extends advanced_testcase {
+class player_test extends \advanced_testcase {
 
     /**
      * Pre-test setup. Preserves $CFG.
@@ -46,13 +40,13 @@ class media_vimeo_testcase extends advanced_testcase {
         \core\plugininfo\media::set_enabled_plugins('vimeo');
 
         // Pretend to be using Firefox browser (must support ogg for tests to work).
-        core_useragent::instance(true, 'Mozilla/5.0 (X11; Linux x86_64; rv:46.0) Gecko/20100101 Firefox/46.0 ');
+        \core_useragent::instance(true, 'Mozilla/5.0 (X11; Linux x86_64; rv:46.0) Gecko/20100101 Firefox/46.0 ');
     }
 
     /**
      * Test that plugin is returned as enabled media plugin.
      */
-    public function test_is_installed() {
+    public function test_is_installed(): void {
         $sortorder = \core\plugininfo\media::get_enabled_plugins();
         $this->assertEquals(['vimeo' => 'vimeo'], $sortorder);
     }
@@ -60,10 +54,10 @@ class media_vimeo_testcase extends advanced_testcase {
     /**
      * Test embedding without media filter (for example for displaying URL resorce).
      */
-    public function test_embed_url() {
+    public function test_embed_url(): void {
         global $CFG;
 
-        $url = new moodle_url('http://vimeo.com/1176321');
+        $url = new \moodle_url('http://vimeo.com/1176321');
 
         $manager = core_media_manager::instance();
         $embedoptions = array(
@@ -89,10 +83,10 @@ class media_vimeo_testcase extends advanced_testcase {
      *
      * filter_mediaplugin is enabled by default.
      */
-    public function test_embed_link() {
+    public function test_embed_link(): void {
         global $CFG;
-        $url = new moodle_url('http://vimeo.com/1176321');
-        $text = html_writer::link($url, 'Watch this one');
+        $url = new \moodle_url('http://vimeo.com/1176321');
+        $text = \html_writer::link($url, 'Watch this one');
         $content = format_text($text, FORMAT_HTML);
 
         $this->assertMatchesRegularExpression('~mediaplugin_vimeo~', $content);
@@ -106,10 +100,10 @@ class media_vimeo_testcase extends advanced_testcase {
      *
      * filter_mediaplugin is enabled by default.
      */
-    public function test_embed_media() {
+    public function test_embed_media(): void {
         global $CFG;
-        $url = new moodle_url('http://vimeo.com/1176321');
-        $trackurl = new moodle_url('http://example.org/some_filename.vtt');
+        $url = new \moodle_url('http://vimeo.com/1176321');
+        $trackurl = new \moodle_url('http://example.org/some_filename.vtt');
         $text = '<video controls="true"><source src="'.$url.'"/>' .
             '<track src="'.$trackurl.'">Unsupported text</video>';
         $content = format_text($text, FORMAT_HTML);
@@ -136,10 +130,10 @@ class media_vimeo_testcase extends advanced_testcase {
      * Test embedding without media filter (for example for displaying URL resorce)
      * and test that player plugin is parsing the URL with the code.
      */
-    public function test_embed_url_with_code() {
+    public function test_embed_url_with_code(): void {
         global $CFG;
 
-        $url = new moodle_url('https://vimeo.com/1176321/abcdef12345');
+        $url = new \moodle_url('https://vimeo.com/1176321/abcdef12345');
 
         $manager = core_media_manager::instance();
         $embedoptions = array(
@@ -169,10 +163,10 @@ class media_vimeo_testcase extends advanced_testcase {
      *
      * filter_mediaplugin is enabled by default.
      */
-    public function test_embed_link_with_code() {
+    public function test_embed_link_with_code(): void {
         global $CFG;
-        $url = new moodle_url('https://vimeo.com/1176321/abcdef12345');
-        $text = html_writer::link($url, 'Watch this one');
+        $url = new \moodle_url('https://vimeo.com/1176321/abcdef12345');
+        $text = \html_writer::link($url, 'Watch this one');
         $content = format_text($text, FORMAT_HTML);
 
         // Video source URL is contains the new vimeo embedded URL format.
@@ -190,10 +184,10 @@ class media_vimeo_testcase extends advanced_testcase {
      *
      * filter_mediaplugin is enabled by default.
      */
-    public function test_embed_media_with_code() {
+    public function test_embed_media_with_code(): void {
         global $CFG;
-        $url = new moodle_url('https://vimeo.com/1176321/abcdef12345');
-        $trackurl = new moodle_url('http://example.org/some_filename.vtt');
+        $url = new \moodle_url('https://vimeo.com/1176321/abcdef12345');
+        $trackurl = new \moodle_url('http://example.org/some_filename.vtt');
         $text = '<video controls="true"><source src="'.$url.'"/>' .
             '<track src="'.$trackurl.'">Unsupported text</video>';
         $content = format_text($text, FORMAT_HTML);
@@ -222,13 +216,30 @@ class media_vimeo_testcase extends advanced_testcase {
     /**
      * Test that mediaplugin filter skip the process when the URL is invalid.
      */
-    public function test_skip_invalid_url_format_with_code() {
-        $url = new moodle_url('https://vimeo.com/_________/abcdef12345s');
-        $text = html_writer::link($url, 'Invalid Vimeo URL');
+    public function test_skip_invalid_url_format_with_code(): void {
+        $url = new \moodle_url('https://vimeo.com/_________/abcdef12345s');
+        $text = \html_writer::link($url, 'Invalid Vimeo URL');
         $content = format_text($text, FORMAT_HTML);
 
         $this->assertStringNotContainsString('player.vimeo.com/video/_________?h=abcdef12345s', $content);
         $this->assertDoesNotMatchRegularExpression('~mediaplugin_vimeo~', $content);
         $this->assertDoesNotMatchRegularExpression('~</iframe>~', $content);
+    }
+
+    /**
+     * Test that Vimeo media plugin renders embed code correctly
+     * when the "do not track" config options is set to true.
+     *
+     * @covers \media_vimeo_plugin::embed_external
+     */
+    public function test_vimeo_donottrack(): void {
+        // Turn on the do not track option.
+        set_config('donottrack', true, 'media_vimeo');
+
+        // Test that the embed code contains the do not track param in the url.
+        $url = new \moodle_url('https://vimeo.com/226053498');
+        $text = \html_writer::link($url, 'Watch this one');
+        $content = format_text($text, FORMAT_HTML);
+        $this->assertMatchesRegularExpression('~dnt=1~', $content);
     }
 }

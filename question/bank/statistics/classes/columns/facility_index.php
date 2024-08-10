@@ -18,8 +18,9 @@ namespace qbank_statistics\columns;
 
 use core_question\local\bank\column_base;
 use qbank_statistics\helper;
+
 /**
- * Facility index column
+ * This column show the average facility index for this question.
  *
  * @package    qbank_statistics
  * @copyright  2021 Catalyst IT Australia Pty Ltd
@@ -28,34 +29,38 @@ use qbank_statistics\helper;
  */
 class facility_index extends column_base {
 
-    /**
-     * Title for this column.
-     *
-     * @return string column title
-     */
-    protected function get_title(): string {
+    public function get_title(): string {
         return get_string('facility_index', 'qbank_statistics');
     }
 
+    public function help_icon(): ?\help_icon {
+        return new \help_icon('facility_index', 'qbank_statistics');
+    }
 
-    /**
-     * Column name.
-     *
-     * @return string column name
-     */
     public function get_name(): string {
         return 'facility_index';
     }
 
-    /**
-     * Output the contents of this column.
-     * @param object $question the row from the $question table, augmented with extra information.
-     * @param string $rowclasses CSS class names that should be applied to this row of output.
-     */
+    public function get_required_statistics_fields(): array {
+        return ['facility'];
+    }
+
     protected function display_content($question, $rowclasses) {
         global $PAGE;
-        // Average facility index per quiz.
-        $facility = helper::calculate_average_question_facility($question->id);
+
+        $facility = $this->qbank->get_aggregate_statistic($question->id, 'facility');
         echo $PAGE->get_renderer('qbank_statistics')->render_facility_index($facility);
+    }
+
+    public function display_preview(\stdClass $question, string $rowclasses): void {
+        global $PAGE;
+
+        $this->display_start($question, $rowclasses);
+        echo $PAGE->get_renderer('qbank_statistics')->render_facility_index(0.75);
+        $this->display_end($question, $rowclasses);;
+    }
+
+    public function get_extra_classes(): array {
+        return ['pr-3'];
     }
 }

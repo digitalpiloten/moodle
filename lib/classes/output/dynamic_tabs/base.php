@@ -18,8 +18,8 @@ declare(strict_types=1);
 
 namespace core\output\dynamic_tabs;
 
-use moodle_exception;
-use templatable;
+use core\exception\moodle_exception;
+use core\output\templatable;
 
 /**
  * Class tab_base
@@ -29,7 +29,6 @@ use templatable;
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class base implements templatable {
-
     /** @var array */
     protected $data;
 
@@ -83,4 +82,22 @@ abstract class base implements templatable {
      * @return string
      */
     abstract public function get_template(): string;
+
+    /**
+     * Return tab data attributes
+     *
+     * @return array
+     */
+    public function get_data(): array {
+        return $this->data;
+    }
+
+    /**
+     * Add custom data to the tab data attributes
+     *
+     * @param array $data
+     */
+    public function add_data(array $data): void {
+        $this->data = array_merge($this->data, $data);
+    }
 }

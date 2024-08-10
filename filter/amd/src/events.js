@@ -13,7 +13,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Javascript events for the `core_filter` subsystem.
+ * Javascript events for the `core_filters` subsystem.
  *
  * @module     core_filters/events
  * @copyright  2021 Andrew Nicols <andrew@nicols.co.uk>
@@ -21,7 +21,7 @@
  * @since      4.0
  *
  * @example <caption>Example of listening to a filter event.</caption>
- * import {eventTypes as filterEventTypes} from 'core_filter/events';
+ * import {eventTypes as filterEventTypes} from 'core_filters/events';
  *
  * document.addEventListener(filterEventTypes.filterContentUpdated, e => {
  *     window.console.log(e.detail.nodes); // A list of the HTMLElements whose content was updated
@@ -30,13 +30,13 @@
 
 import {dispatchEvent} from 'core/event_dispatcher';
 import {getList as normalistNodeList} from 'core/normalise';
-import jQuery from 'jquery';
 
 /**
- * Events for the `core_filter` subsystem.
+ * Events for the `core_filters` subsystem.
  *
  * @constant
  * @property {String} filterContentUpdated See {@link event:filterContentUpdated}
+ * @property {String} filterContentRenderingComplete See {@link event:filterContentRenderingComplete}
  */
 export const eventTypes = {
     /**
@@ -51,6 +51,15 @@ export const eventTypes = {
      * @property {NodeElement[]} detail.nodes The list of parent nodes which were updated
      */
     filterContentUpdated: 'core_filters/contentUpdated',
+
+    /**
+     * An event triggered when filter system have done rendering the content using the filter system.
+     *
+     * @event filterContentRenderingComplete
+     * @type {CustomEvent}
+     * @property {object} detail
+     */
+    filterContentRenderingComplete: 'core_filters/contentRenderingComplete',
 };
 
 /**
@@ -69,22 +78,14 @@ export const notifyFilterContentUpdated = nodes => {
     return dispatchEvent(eventTypes.filterContentUpdated, {nodes});
 };
 
-let legacyEventsRegistered = false;
-if (!legacyEventsRegistered) {
-    // The following event triggers are legacy and will be removed in the future.
-    // The following approach provides a backwards-compatability layer for the new events.
-    // Code should be updated to make use of native events.
-
-    Y.use('event', 'moodle-core-event', () => {
-        // Provide a backwards-compatability layer for YUI Events.
-        document.addEventListener(eventTypes.filterContentUpdated, e => {
-            // Trigger the legacy jQuery event.
-            jQuery(document).trigger(M.core.event.FILTER_CONTENT_UPDATED, [jQuery(e.detail.nodes)]);
-
-            // Trigger the legacy YUI event.
-            Y.fire(M.core.event.FILTER_CONTENT_UPDATED, {nodes: new Y.NodeList(e.detail.nodes)});
-        });
-    });
-
-    legacyEventsRegistered = true;
-}
+/**
+ * Trigger an event to indicate that the filter has been processed.
+ *
+ * @method notifyFilterContentRenderingComplete
+ * @param {NodeList|Node[]} nodes List of nodes that has been modified by filter
+ * @returns {CustomEvent}
+ * @fires filterContentRenderingComplete
+ */
+export const notifyFilterContentRenderingComplete = nodes => {
+    return dispatchEvent(eventTypes.filterContentRenderingComplete, {nodes});
+};

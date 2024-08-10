@@ -17,9 +17,11 @@
 namespace qbank_statistics\columns;
 
 use core_question\local\bank\column_base;
-use qbank_statistics\helper;
+
 /**
- * Discrimination index column
+ * This columns shows a message about whether this question is OK or needs revision.
+ *
+ * This is based on the average discrimination index.
  *
  * @package    qbank_statistics
  * @copyright  2021 Catalyst IT Australia Pty Ltd
@@ -28,33 +30,39 @@ use qbank_statistics\helper;
  */
 class discrimination_index extends column_base {
 
-    /**
-     * Title for this column.
-     *
-     * @return string column title
-     */
-    protected function get_title(): string {
+    public function get_title(): string {
         return get_string('discrimination_index', 'qbank_statistics');
     }
 
-    /**
-     * Column name.
-     *
-     * @return string column name
-     */
+    public function help_icon(): ?\help_icon {
+        return new \help_icon('discrimination_index', 'qbank_statistics');
+    }
+
     public function get_name(): string {
         return 'discrimination_index';
     }
 
-    /**
-     * Output the contents of this column.
-     * @param object $question the row from the $question table, augmented with extra information.
-     * @param string $rowclasses CSS class names that should be applied to this row of output.
-     */
+    public function get_required_statistics_fields(): array {
+        return ['discriminationindex'];
+    }
+
     protected function display_content($question, $rowclasses) {
         global $PAGE;
-        // Average discrimination index per quiz.
-        $discriminationindex = helper::calculate_average_question_discrimination_index($question->id);
+
+        $discriminationindex = $this->qbank->get_aggregate_statistic($question->id, 'discriminationindex');
         echo $PAGE->get_renderer('qbank_statistics')->render_discrimination_index($discriminationindex);
     }
+
+    public function display_preview(\stdClass $question, string $rowclasses): void {
+        global $PAGE;
+
+        $this->display_start($question, $rowclasses);
+        echo $PAGE->get_renderer('qbank_statistics')->render_discrimination_index(50.00);
+        $this->display_end($question, $rowclasses);;
+    }
+
+    public function get_extra_classes(): array {
+        return ['pr-3'];
+    }
+
 }

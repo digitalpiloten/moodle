@@ -57,9 +57,11 @@ class report_action_menu implements templatable, renderable {
      * Export this url select menu for navigating between reports.
      *
      * @param \renderer_base  $output Renderer output.
-     * @return \stdClass The data for a url_select element.
+     * @return array The data for the template.
      */
-    public function export_for_template(\renderer_base $output): \stdClass {
+    public function export_for_template(\renderer_base $output): array {
+        global $PAGE;
+
         $overviewlink = new moodle_url('/mod/lesson/report.php', ['id' => $this->lessonid, 'action' => 'reportoverview']);
         $fulllink = new moodle_url('/mod/lesson/report.php', ['id' => $this->lessonid, 'action' => 'reportdetail']);
         $menu = [
@@ -67,6 +69,14 @@ class report_action_menu implements templatable, renderable {
             $fulllink->out(false) => get_string('detailedstats', 'mod_lesson')
         ];
         $reportselect = new \url_select($menu, $this->url->out(false), null, 'lesson-report-select');
-        return $reportselect->export_for_template($output);
+        $reportselect->label = get_string('selectreport', 'mod_lesson');
+        $reportselect->labelattributes = ['class' => 'sr-only'];
+
+        $data = [
+            'reportselect' => $reportselect->export_for_template($output),
+            'heading' => $menu[$reportselect->selected] ?? '',
+            'headinglevel' => $PAGE->activityheader->get_heading_level(),
+        ];
+        return $data;
     }
 }

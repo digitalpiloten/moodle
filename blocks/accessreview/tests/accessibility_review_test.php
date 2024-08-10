@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace block_accessreview\tests;
+namespace block_accessreview;
 
 use ReflectionClass;
 use advanced_testcase;
@@ -28,24 +28,25 @@ use context_course;
  * @copyright  2020 onward: Learning Technology Services, www.lts.ie
  * @author     Jay Churchward (jay.churchward@poetopensource.org)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @coversDefaultClass \block_accessreview
  */
 class accessibility_review_test extends advanced_testcase {
     public static function setUpBeforeClass(): void {
         require_once(__DIR__ . '/../../moodleblock.class.php');
         require_once(__DIR__ . '/../block_accessreview.php');
+        parent::setUpBeforeClass();
     }
 
-    public function test_get_toggle_link() {
+    public function test_get_toggle_link(): void {
         $rc = new ReflectionClass(block_accessreview::class);
         $rm = $rc->getMethod('get_toggle_link');
-        $rm->setAccessible(true);
 
         $block = new block_accessreview();
         $output = $rm->invoke($block);
         $this->assertNotEmpty($output);
     }
 
-    public function test_get_download_link() {
+    public function test_get_download_link(): void {
         $this->resetAfterTest();
 
         $user1 = $this->getDataGenerator()->create_user();
@@ -59,7 +60,6 @@ class accessibility_review_test extends advanced_testcase {
 
         $rc = new ReflectionClass(block_accessreview::class);
         $rm = $rc->getMethod('get_download_link');
-        $rm->setAccessible(true);
         $block = new block_accessreview();
 
         $this->setUser($user1);
@@ -71,7 +71,7 @@ class accessibility_review_test extends advanced_testcase {
         $this->assertEmpty($result);
     }
 
-    public function test_get_report_link() {
+    public function test_get_report_link(): void {
         $this->resetAfterTest();
 
         $user1 = $this->getDataGenerator()->create_user();
@@ -85,7 +85,6 @@ class accessibility_review_test extends advanced_testcase {
 
         $rc = new ReflectionClass(block_accessreview::class);
         $rm = $rc->getMethod('get_report_link');
-        $rm->setAccessible(true);
         $block = new block_accessreview();
 
         $this->setUser($user1);
@@ -95,5 +94,31 @@ class accessibility_review_test extends advanced_testcase {
         $this->setUser($user2);
         $result = $rm->invoke($block, context_course::instance($course->id));
         $this->assertEmpty($result);
+    }
+
+    /**
+     * Test the behaviour of can_block_be_added() method.
+     *
+     * @covers ::can_block_be_added
+     */
+    public function test_can_block_be_added(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        // Create a course and prepare the page where the block will be added.
+        $course = $this->getDataGenerator()->create_course();
+        $page = new \moodle_page();
+        $page->set_context(context_course::instance($course->id));
+        $page->set_pagelayout('course');
+
+        $block = new block_accessreview();
+
+        // If the accessibility tools is enabled, the method should return true.
+        set_config('enableaccessibilitytools', true);
+        $this->assertTrue($block->can_block_be_added($page));
+
+        // However, if the accessibility tools is disabled, the method should return false.
+        set_config('enableaccessibilitytools', false);
+        $this->assertFalse($block->can_block_be_added($page));
     }
 }

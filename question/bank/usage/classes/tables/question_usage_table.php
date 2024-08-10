@@ -16,11 +16,11 @@
 
 namespace qbank_usage\tables;
 
-defined('MOODLE_INTERNAL') || die();
-
 global $CFG;
 require_once($CFG->libdir.'/tablelib.php');
 
+use context_course;
+use html_writer;
 use moodle_url;
 use qbank_usage\helper;
 use table_sql;
@@ -51,13 +51,18 @@ class question_usage_table extends table_sql {
     public $question;
 
     /**
+     * @var bool $specificversion Are we displaying the usage for a specific version, rather than all versions of the question?
+     */
+    protected $specificversion;
+
+    /**
      * constructor.
      * Sets the SQL for the table and the pagination.
      *
      * @param string $uniqueid
      * @param \question_definition $question
      */
-    public function __construct(string $uniqueid, \question_definition $question) {
+    public function __construct(string $uniqueid, \question_definition $question, bool $specificversion = false) {
         global $PAGE;
         parent::__construct($uniqueid);
         $this->question = $question;
@@ -74,17 +79,22 @@ class question_usage_table extends table_sql {
         $this->define_columns($columns);
         $this->define_headers($headers);
         $this->define_baseurl($PAGE->url);
+        $this->specificversion = $specificversion;
+        $this->set_attribute('id', 'question_usage_table');
     }
 
     public function query_db($pagesize, $useinitialsbar = true) {
         global $DB;
         if (!$this->is_downloading()) {
-            $total = helper::get_question_entry_usage_count($this->question);
+            $total = helper::get_question_entry_usage_count($this->question, $this->specificversion);
             $this->pagesize($pagesize, $total);
         }
 
-        $sql = helper::question_usage_sql();
-        $params = [$this->question->id, $this->question->id];
+        $sql = helper::question_usage_sql($this->specificversion);
+        $params = [$this->question->id, $this->question->questionbankentryid, 'mod_quiz', 'slot'];
+        if ($this->specificversion) {
+            $params[] = $this->question->id;
+        }
 
         if (!$this->is_downloading()) {
             $this->rawdata = $DB->get_records_sql($sql, $params, $this->get_page_start(), $this->get_page_size());
@@ -94,18 +104,18 @@ class question_usage_table extends table_sql {
     }
 
     public function col_modulename(\stdClass $values): string {
-        $params = [
-            'href' => new moodle_url('/mod/quiz/view.php', ['q' => $values->quizid])
-        ];
-        return \html_writer::tag('a', $values->modulename, $params);
+        $cm = get_fast_modinfo($values->courseid)->instances['quiz'][$values->quizid];
+
+        return html_writer::link(new moodle_url('/mod/quiz/view.php', ['q' => $values->quizid]), $cm->get_formatted_name());
     }
 
     public function col_coursename(\stdClass $values): string {
         $course = get_course($values->courseid);
-        $params = [
-            'href' => new moodle_url('/course/view.php', ['id' => $values->courseid])
-        ];
-        return \html_writer::tag('a', $course->fullname, $params);
+        $context = context_course::instance($course->id);
+
+        return html_writer::link(course_get_url($course), format_string($course->fullname, true, [
+            'context' => $context,
+        ]));
     }
 
     public function col_attempts(\stdClass $values): string {

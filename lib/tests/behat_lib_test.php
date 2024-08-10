@@ -42,6 +42,7 @@ class behat_lib_test extends advanced_testcase {
      */
     public function setUp(): void {
         global $CFG;
+        parent::setUp();
 
         if (empty($CFG->behat_wwwroot) || empty($CFG->behat_dataroot) || empty($CFG->behat_prefix)) {
             $this->markTestSkipped('Behat not configured');
@@ -52,12 +53,13 @@ class behat_lib_test extends advanced_testcase {
      * Tests for behat_is_requested_url() function.
      *
      * @dataProvider url_provider
+     * @covers ::behat_is_requested_url
      *
      * @param string $url           URL used with behat_is_requested_url() function.
      * @param bool   $expectedvalue Expected value returned by behat_is_requested_url() function.
      * @param array  $environment   Values to override $_SERVER global variable.
      */
-    public function test_behat_is_requested_url($url, $expectedvalue, $environment) {
+    public function test_behat_is_requested_url($url, $expectedvalue, $environment): void {
         // Save $_SERVER variable.
         $server = $_SERVER;
 

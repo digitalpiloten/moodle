@@ -23,9 +23,9 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+namespace core;
 
-require_once(__DIR__.'/../../pgsql_native_moodle_database.php');
+use ReflectionProperty;
 
 /**
  * Read slave helper that exposes selected moodle_read_slave_trait metods
@@ -36,14 +36,12 @@ require_once(__DIR__.'/../../pgsql_native_moodle_database.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 trait test_moodle_read_slave_trait {
-    // @codingStandardsIgnoreStart
     /**
      * Constructs a mock db driver
      *
      * @param bool $external
      */
     public function __construct($external = false) {
-    // @codingStandardsIgnoreEnd
         parent::__construct($external);
 
         $rw = fopen("php://memory", 'r+');
@@ -52,12 +50,16 @@ trait test_moodle_read_slave_trait {
         $ro = fopen("php://memory", 'r+');
         fputs($ro, 'ro');
 
-        $this->wantreadslave = true;
+        $this->prefix = 'test_'; // Default, not to leave empty.
+
+        $rcp = new ReflectionProperty(parent::class, 'wantreadslave');
+        $rcp->setValue($this, true);
+
         $this->dbhwrite = $rw;
         $this->dbhreadonly = $ro;
         $this->set_db_handle($this->dbhwrite);
 
-        $this->temptables = new moodle_temptables($this);
+        $this->temptables = new \moodle_temptables($this);
     }
 
     /**
@@ -98,11 +100,11 @@ trait test_moodle_read_slave_trait {
     /**
      * Upgrade to public
      * @param string $sql
-     * @param array $params
+     * @param array|null $params
      * @param int $type
      * @param array $extrainfo
      */
-    public function query_start($sql, array $params = null, $type, $extrainfo = null) {
+    public function query_start($sql, ?array $params, $type, $extrainfo = null) {
         return parent::query_start($sql, $params, $type);
     }
 
@@ -111,6 +113,7 @@ trait test_moodle_read_slave_trait {
      * @param mixed $result
      */
     public function query_end($result) {
+        parent::query_end($result);
         $this->set_db_handle($this->dbhwrite);
     }
 

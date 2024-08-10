@@ -14,15 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Question external functions tests.
- *
- * @package    core_question
- * @category   external
- * @copyright  2016 Pau Ferrer <pau@moodle.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @since      Moodle 3.1
- */
+namespace core_question;
+
+use core_external\restricted_context_exception;
+use core_question_external;
+use externallib_advanced_testcase;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -35,18 +31,29 @@ require_once($CFG->dirroot . '/question/engine/tests/helpers.php');
  * Question external functions tests
  *
  * @package    core_question
+ * @covers     \core_question_external
  * @category   external
  * @copyright  2016 Pau Ferrer <pau@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since      Moodle 3.1
  */
-class core_question_external_testcase extends externallib_advanced_testcase {
+class externallib_test extends externallib_advanced_testcase {
+
+    /** @var \stdClass course record. */
+    protected $course;
+
+    /** @var \stdClass user record. */
+    protected $student;
+
+    /** @var \stdClass user role record. */
+    protected $studentrole;
 
     /**
      * Set up for every test
      */
     public function setUp(): void {
         global $DB;
+        parent::setUp();
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -64,24 +71,24 @@ class core_question_external_testcase extends externallib_advanced_testcase {
     /**
      * Test update question flag
      */
-    public function test_core_question_update_flag() {
+    public function test_core_question_update_flag(): void {
 
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
 
         // Create a question category.
         $cat = $questiongenerator->create_question_category();
 
-        $quba = question_engine::make_questions_usage_by_activity('core_question_update_flag', context_system::instance());
+        $quba = \question_engine::make_questions_usage_by_activity('core_question_update_flag', \context_system::instance());
         $quba->set_preferred_behaviour('deferredfeedback');
         $questiondata = $questiongenerator->create_question('numerical', null, ['category' => $cat->id]);
-        $question = question_bank::load_question($questiondata->id);
+        $question = \question_bank::load_question($questiondata->id);
         $slot = $quba->add_question($question);
         $qa = $quba->get_question_attempt($slot);
 
         self::setUser($this->student);
 
         $quba->start_all_questions();
-        question_engine::save_questions_usage_by_activity($quba);
+        \question_engine::save_questions_usage_by_activity($quba);
 
         $qubaid = $quba->get_id();
         $questionid = $question->id;
@@ -98,7 +105,7 @@ class core_question_external_testcase extends externallib_advanced_testcase {
 
             core_question_external::update_flag($qubaid, $questionid, $qaid, $slot, $checksum, true);
             $this->fail('Exception expected due to invalid checksum.');
-        } catch (moodle_exception $e) {
+        } catch (\moodle_exception $e) {
             $this->assertEquals('errorsavingflags', $e->errorcode);
         }
     }
@@ -189,10 +196,10 @@ class core_question_external_testcase extends externallib_advanced_testcase {
         $includesubcategories,
         $usetagnames,
         $expectedquestionindexes
-    ) {
+    ): void {
         $this->resetAfterTest();
 
-        $context = context_system::instance();
+        $context = \context_system::instance();
         $categories = [];
         $questions = [];
         $tagnames = [
@@ -201,8 +208,8 @@ class core_question_external_testcase extends externallib_advanced_testcase {
             'subcat',
             'foo'
         ];
-        $collid = core_tag_collection::get_default();
-        $tags = core_tag_tag::create_if_missing($collid, $tagnames);
+        $collid = \core_tag_collection::get_default();
+        $tags = \core_tag_tag::create_if_missing($collid, $tagnames);
         $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
 
         // First category and questions.
@@ -251,11 +258,11 @@ class core_question_external_testcase extends externallib_advanced_testcase {
      * get_random_question_summaries should throw an invalid_parameter_exception if not
      * given an integer for the category id.
      */
-    public function test_get_random_question_summaries_invalid_category_id_param() {
+    public function test_get_random_question_summaries_invalid_category_id_param(): void {
         $this->resetAfterTest();
 
-        $context = context_system::instance();
-        $this->expectException('invalid_parameter_exception');
+        $context = \context_system::instance();
+        $this->expectException('\invalid_parameter_exception');
         core_question_external::get_random_question_summaries('invalid value', false, [], $context->id);
     }
 
@@ -263,11 +270,11 @@ class core_question_external_testcase extends externallib_advanced_testcase {
      * get_random_question_summaries should throw an invalid_parameter_exception if not
      * given a boolean for the $includesubcategories parameter.
      */
-    public function test_get_random_question_summaries_invalid_includesubcategories_param() {
+    public function test_get_random_question_summaries_invalid_includesubcategories_param(): void {
         $this->resetAfterTest();
 
-        $context = context_system::instance();
-        $this->expectException('invalid_parameter_exception');
+        $context = \context_system::instance();
+        $this->expectException('\invalid_parameter_exception');
         core_question_external::get_random_question_summaries(1, 'invalid value', [], $context->id);
     }
 
@@ -275,11 +282,11 @@ class core_question_external_testcase extends externallib_advanced_testcase {
      * get_random_question_summaries should throw an invalid_parameter_exception if not
      * given an array of integers for the tag ids parameter.
      */
-    public function test_get_random_question_summaries_invalid_tagids_param() {
+    public function test_get_random_question_summaries_invalid_tagids_param(): void {
         $this->resetAfterTest();
 
-        $context = context_system::instance();
-        $this->expectException('invalid_parameter_exception');
+        $context = \context_system::instance();
+        $this->expectException('\invalid_parameter_exception');
         core_question_external::get_random_question_summaries(1, false, ['invalid', 'values'], $context->id);
     }
 
@@ -287,10 +294,10 @@ class core_question_external_testcase extends externallib_advanced_testcase {
      * get_random_question_summaries should throw an invalid_parameter_exception if not
      * given a context.
      */
-    public function test_get_random_question_summaries_invalid_context() {
+    public function test_get_random_question_summaries_invalid_context(): void {
         $this->resetAfterTest();
 
-        $this->expectException('invalid_parameter_exception');
+        $this->expectException('\invalid_parameter_exception');
         core_question_external::get_random_question_summaries(1, false, [1, 2], 'context');
     }
 
@@ -299,12 +306,12 @@ class core_question_external_testcase extends externallib_advanced_testcase {
      * if the given context is outside of the set of restricted contexts the user
      * is allowed to call external functions in.
      */
-    public function test_get_random_question_summaries_restricted_context() {
+    public function test_get_random_question_summaries_restricted_context(): void {
         $this->resetAfterTest();
 
         $course = $this->getDataGenerator()->create_course();
-        $coursecontext = context_course::instance($course->id);
-        $systemcontext = context_system::instance();
+        $coursecontext = \context_course::instance($course->id);
+        $systemcontext = \context_system::instance();
         // Restrict access to external functions for the logged in user to only
         // the course we just created. External functions should not be allowed
         // to execute in any contexts above the course context.
@@ -316,8 +323,8 @@ class core_question_external_testcase extends externallib_advanced_testcase {
             // Do this in a try/catch statement to allow the context restriction
             // to be reset afterwards.
             core_question_external::get_random_question_summaries(1, false, [], $systemcontext->id);
-        } catch (Exception $e) {
-            $this->assertInstanceOf('restricted_context_exception', $e);
+        } catch (\Exception $e) {
+            $this->assertInstanceOf(restricted_context_exception::class, $e);
         }
         // Reset the restriction so that other tests don't fail aftwards.
         core_question_external::set_context_restriction($systemcontext);
@@ -326,11 +333,11 @@ class core_question_external_testcase extends externallib_advanced_testcase {
     /**
      * get_random_question_summaries should return a question that is formatted correctly.
      */
-    public function test_get_random_question_summaries_formats_returned_questions() {
+    public function test_get_random_question_summaries_formats_returned_questions(): void {
         $this->resetAfterTest();
 
         list($category, $questions) = $this->create_category_and_questions(1);
-        $context = context_system::instance();
+        $context = \context_system::instance();
         $question = $questions[0];
         $expected = (object) [
             'id' => $question->id,
@@ -350,23 +357,23 @@ class core_question_external_testcase extends externallib_advanced_testcase {
         $this->assertEquals($expected->qtype, $actual->qtype);
         // These values are added by the formatting. It doesn't matter what the
         // exact values are just that they are returned.
-        $this->assertObjectHasAttribute('icon', $actual);
-        $this->assertObjectHasAttribute('key', $actual->icon);
-        $this->assertObjectHasAttribute('component', $actual->icon);
-        $this->assertObjectHasAttribute('alttext', $actual->icon);
+        $this->assertObjectHasProperty('icon', $actual);
+        $this->assertObjectHasProperty('key', $actual->icon);
+        $this->assertObjectHasProperty('component', $actual->icon);
+        $this->assertObjectHasProperty('alttext', $actual->icon);
     }
 
     /**
      * get_random_question_summaries should allow limiting and offsetting of the result set.
      */
-    public function test_get_random_question_summaries_with_limit_and_offset() {
+    public function test_get_random_question_summaries_with_limit_and_offset(): void {
         $this->resetAfterTest();
         $numberofquestions = 5;
         $includesubcategories = false;
         $tagids = [];
         $limit = 1;
         $offset = 0;
-        $context = context_system::instance();
+        $context = \context_system::instance();
         list($category, $questions) = $this->create_category_and_questions($numberofquestions);
 
         // Sort the questions by id to match the ordering of the result.
@@ -406,18 +413,18 @@ class core_question_external_testcase extends externallib_advanced_testcase {
      * get_random_question_summaries should throw an exception if the user doesn't
      * have the capability to use the questions in the requested category.
      */
-    public function test_get_random_question_summaries_without_capability() {
+    public function test_get_random_question_summaries_without_capability(): void {
         $this->resetAfterTest();
         $generator = $this->getDataGenerator();
         $user = $generator->create_user();
         $roleid = $generator->create_role();
-        $systemcontext = context_system::instance();
+        $systemcontext = \context_system::instance();
         $numberofquestions = 5;
         $includesubcategories = false;
         $tagids = [];
-        $context = context_system::instance();
+        $context = \context_system::instance();
         list($category, $questions) = $this->create_category_and_questions($numberofquestions);
-        $categorycontext = context::instance_by_id($category->contextid);
+        $categorycontext = \context::instance_by_id($category->contextid);
 
         $generator->role_assign($roleid, $user->id, $systemcontext->id);
         // Prohibit all of the tag capabilities.
@@ -459,8 +466,8 @@ class core_question_external_testcase extends externallib_advanced_testcase {
         }
 
         if (!empty($tagnames) && !empty($questions)) {
-            $context = context::instance_by_id($category->contextid);
-            core_tag_tag::set_item_tags('core_question', 'question', $questions[0]->id, $context, $tagnames);
+            $context = \context::instance_by_id($category->contextid);
+            \core_tag_tag::set_item_tags('core_question', 'question', $questions[0]->id, $context, $tagnames);
         }
 
         return [$category, $questions];

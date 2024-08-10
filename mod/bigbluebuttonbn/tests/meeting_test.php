@@ -120,7 +120,7 @@ class meeting_test extends \advanced_testcase {
      * @covers ::create_meeting_data
      * @covers ::create_meeting_metadata
      */
-    public function test_create_meeting(int $type, ?string $groupname) {
+    public function test_create_meeting(int $type, ?string $groupname): void {
         $this->resetAfterTest();
         [$meeting, $useringroup, $usernotingroup, $groupid, $activity] =
             $this->prepare_meeting($type, $groupname, SEPARATEGROUPS, false);
@@ -142,7 +142,7 @@ class meeting_test extends \advanced_testcase {
      * @covers ::get_meeting_info
      * @covers ::do_get_meeting_info
      */
-    public function test_get_meeting_info(int $type, ?string $groupname) {
+    public function test_get_meeting_info(int $type, ?string $groupname): void {
         $this->resetAfterTest();
         [$meeting, $useringroup, $usernotingroup, $groupid, $activity] = $this->prepare_meeting($type, $groupname);
         $meetinginfo = $meeting->get_meeting_info();
@@ -155,6 +155,17 @@ class meeting_test extends \advanced_testcase {
         $meeting->update_cache();
         $meetinginfo = $meeting->get_meeting_info();
         $this->assertFalse($meetinginfo->statusrunning);
+
+        if ($type == instance::TYPE_ALL) {
+            $this->assertTrue($meetinginfo->features['showroom']);
+            $this->assertTrue($meetinginfo->features['showrecordings']);
+        } else if ($type == instance::TYPE_ROOM_ONLY) {
+            $this->assertTrue($meetinginfo->features['showroom']);
+            $this->assertFalse($meetinginfo->features['showrecordings']);
+        } else if ($type == instance::TYPE_RECORDING_ONLY) {
+            $this->assertFalse($meetinginfo->features['showroom']);
+            $this->assertTrue($meetinginfo->features['showrecordings']);
+        }
     }
 
     /**
@@ -164,11 +175,10 @@ class meeting_test extends \advanced_testcase {
      * @param string|null $groupname
      * @param int $groupmode
      * @param array $canjoin
-     * @throws \coding_exception
      * @dataProvider get_instance_types_meeting_info
      * @covers ::can_join
      */
-    public function test_can_join(int $type, ?string $groupname, int $groupmode, array $canjoin) {
+    public function test_can_join(int $type, ?string $groupname, int $groupmode, array $canjoin): void {
         $this->resetAfterTest();
         [$meeting, $useringroup, $usernotingroup, $groupid, $activity] = $this->prepare_meeting($type, $groupname, $groupmode);
         $this->setUser($useringroup);
@@ -176,7 +186,7 @@ class meeting_test extends \advanced_testcase {
         $this->assertEquals($canjoin['useringroup'], $meeting->can_join());
         if ($meeting->can_join()) {
             $meetinginfo = $meeting->get_meeting_info();
-            $this->assertStringContainsString("This conference is in progress", $meetinginfo->statusmessage);
+            $this->assertStringContainsString("The session is in progress.", $meetinginfo->statusmessage);
         }
         if ($groupname) {
             $this->setUser($usernotingroup);
@@ -193,11 +203,10 @@ class meeting_test extends \advanced_testcase {
      * @param int $groupmode
      * @param array $canjoin
      * @param array $dates
-     * @throws \coding_exception
      * @dataProvider get_data_can_join_with_dates
      * @covers ::can_join
      */
-    public function test_can_join_with_dates(int $type, ?string $groupname, int $groupmode, array $canjoin, array $dates) {
+    public function test_can_join_with_dates(int $type, ?string $groupname, int $groupmode, array $canjoin, array $dates): void {
         // Apply the data provider relative values to now.
         array_walk($dates, function(&$val) {
             $val = time() + $val;
@@ -208,11 +217,136 @@ class meeting_test extends \advanced_testcase {
         $this->setUser($useringroup);
         $meeting->update_cache();
         $this->assertEquals($canjoin['useringroup'], $meeting->can_join());
+        // We check that admin can not join outside opening/closing times either.
+        $this->setAdminUser();
+        $this->assertEquals(false, $meeting->can_join());
         if ($groupname) {
             $this->setUser($usernotingroup);
             $meeting->update_cache();
             $this->assertEquals($canjoin['usernotingroup'], $meeting->can_join());
+            $this->setAdminUser();
+            $this->assertEquals(false, $meeting->can_join());
         }
+    }
+
+    /**
+     * Test can join is working if the "Wait for moderator to join" setting is set and a moderator has not yet joined.
+     *
+     * @covers ::join
+     * @covers ::join_meeting
+     */
+    public function test_join_wait_for_moderator_not_joined(): void {
+        $this->resetAfterTest();
+
+        $this->setAdminUser();
+        $bbbgenerator = $this->getDataGenerator()->get_plugin_generator('mod_bigbluebuttonbn');
+        $student = $this->getDataGenerator()->create_and_enrol($this->get_course());
+        $meetinginfo = [
+            'course' => $this->get_course()->id,
+            'type' => instance::TYPE_ALL,
+            'wait' => 1,
+        ];
+        $activity = $bbbgenerator->create_instance($meetinginfo, [
+            'wait' => 1,
+        ]);
+        $instance = instance::get_from_instanceid($activity->id);
+        $meeting = new meeting($instance);
+
+        // The moderator has not joined.
+        $this->setUser($student);
+        $meeting->update_cache();
+        $this->expectException(\mod_bigbluebuttonbn\local\exceptions\meeting_join_exception::class);
+        meeting::join_meeting($instance);
+    }
+
+    /**
+     * Test can join is working if the "Wait for moderator to join" setting is set and a moderator has already joined.
+     *
+     * @covers ::join
+     * @covers ::join_meeting
+     */
+    public function test_join_wait_for_moderator_is_joined(): void {
+        $this->resetAfterTest();
+
+        $this->setAdminUser();
+        $bbbgenerator = $this->getDataGenerator()->get_plugin_generator('mod_bigbluebuttonbn');
+        $moderator = $this->getDataGenerator()->create_and_enrol($this->get_course(), 'editingteacher');
+        $student = $this->getDataGenerator()->create_and_enrol($this->get_course());
+        $meetinginfo = [
+            'course' => $this->get_course()->id,
+            'type' => instance::TYPE_ALL,
+            'wait' => 1,
+            'moderators' => 'role:editingteacher',
+        ];
+        $activity = $bbbgenerator->create_instance($meetinginfo, [
+            'wait' => 1,
+        ]);
+        $instance = instance::get_from_instanceid($activity->id);
+        $meeting = new meeting($instance);
+        $bbbgenerator->create_meeting([
+            'instanceid' => $instance->get_instance_id(),
+        ]);
+
+        $this->setUser($moderator);
+        $meeting->update_cache();
+        $joinurl = $meeting->join(logger::ORIGIN_BASE);
+        $this->assertIsString($joinurl);
+        $this->join_meeting($joinurl);
+        $meeting->update_cache();
+        $this->assertCount(1, $meeting->get_attendees());
+
+        // The student can now join the meeting as a moderator is present.
+        $this->setUser($student);
+        $joinurl = $meeting->join(logger::ORIGIN_BASE);
+        $this->assertIsString($joinurl);
+    }
+
+    /**
+     * Test can join is working if the "user limit" setting is set and reached.
+     *
+     * @covers ::join
+     * @covers ::join_meeting
+     */
+    public function test_join_user_limit_reached(): void {
+        $this->resetAfterTest();
+        set_config('bigbluebuttonbn_userlimit_editable', true);
+        $this->setAdminUser();
+        $bbbgenerator = $this->getDataGenerator()->get_plugin_generator('mod_bigbluebuttonbn');
+        $moderator = $this->getDataGenerator()->create_and_enrol($this->get_course(), 'editingteacher');
+        $student1 = $this->getDataGenerator()->create_and_enrol($this->get_course());
+        $student2 = $this->getDataGenerator()->create_and_enrol($this->get_course());
+        $meetinginfo = [
+            'course' => $this->get_course()->id,
+            'type' => instance::TYPE_ALL,
+            'userlimit' => 2,
+        ];
+        $activity = $bbbgenerator->create_instance($meetinginfo, [
+            'userlimit' => 2,
+        ]);
+        $instance = instance::get_from_instanceid($activity->id);
+        $meeting = new meeting($instance);
+        $bbbgenerator->create_meeting([
+            'instanceid' => $instance->get_instance_id(),
+        ]);
+        // Moderator joins the meeting.
+        $this->setUser($moderator);
+        $this->join_meeting($meeting->join(logger::ORIGIN_BASE));
+        $meeting->update_cache();
+        $this->assertEquals(1, $meeting->get_participant_count());
+
+        // Student1 joins the meeting.
+        $this->setUser($student1);
+        $this->join_meeting($meeting->join(logger::ORIGIN_BASE));
+        $meeting->update_cache();
+        $this->assertEquals(2, $meeting->get_participant_count());
+        $this->assertTrue($instance->has_user_limit_been_reached($meeting->get_participant_count()));
+
+        // Student2 tries to join but the limit has been reached.
+        $this->setUser($student2);
+        $meeting->update_cache();
+        $this->assertFalse($meeting->can_join());
+        $this->expectException(\mod_bigbluebuttonbn\local\exceptions\meeting_join_exception::class);
+        meeting::join_meeting($instance);
     }
 
     /**
@@ -220,7 +354,7 @@ class meeting_test extends \advanced_testcase {
      *
      * @covers ::get_attendees
      */
-    public function test_get_attendees() {
+    public function test_get_attendees(): void {
         $this->resetAfterTest();
         [$meeting, $useringroup, $usernotingroup, $groupid, $activity] =
             $this->prepare_meeting(instance::TYPE_ALL, null, NOGROUPS, true);
@@ -241,7 +375,7 @@ class meeting_test extends \advanced_testcase {
      *
      * @covers ::get_attendees
      */
-    public function test_participant_count() {
+    public function test_participant_count(): void {
         $this->resetAfterTest();
         [$meeting, $useringroup, $usernotingroup, $groupid, $activity] =
             $this->prepare_meeting(instance::TYPE_ALL, null, NOGROUPS, true);
@@ -250,18 +384,21 @@ class meeting_test extends \advanced_testcase {
         $meeting->update_cache();
         $meetinginfo = $meeting->get_meeting_info();
         $this->assertEquals(1, $meetinginfo->participantcount);
+        $this->assertEquals(1, $meetinginfo->totalusercount);
         $this->assertEquals(0, $meetinginfo->moderatorcount);
         $this->setUser($usernotingroup);
         $this->join_meeting($meeting->join(logger::ORIGIN_BASE));
         $meeting->update_cache();
         $meetinginfo = $meeting->get_meeting_info();
         $this->assertEquals(2, $meetinginfo->participantcount);
+        $this->assertEquals(2, $meetinginfo->totalusercount);
         $this->assertEquals(0, $meetinginfo->moderatorcount);
         $this->setAdminUser();
         $this->join_meeting($meeting->join(logger::ORIGIN_BASE));
         $meeting->update_cache();
         $meetinginfo = $meeting->get_meeting_info();
         $this->assertEquals(2, $meetinginfo->participantcount);
+        $this->assertEquals(3, $meetinginfo->totalusercount);
         $this->assertEquals(1, $meetinginfo->moderatorcount);
     }
     /**

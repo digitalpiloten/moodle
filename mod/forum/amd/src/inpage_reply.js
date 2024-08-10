@@ -85,7 +85,7 @@ define([
     };
 
     /**
-     * Register the event listeners for the submit button of the in page reply.
+     * Register the event listeners for the submit/cancel buttons of the in page reply.
      *
      * @param {Object} root The discussion container element.
      */
@@ -178,7 +178,9 @@ define([
                     })
                     .then(function() {
                         location.href = "#p" + newid;
-                        return;
+
+                        // Reload the page, say if threshold is being set by user those would get reflected through the templates.
+                        location.reload();
                     })
                     .catch(function(error) {
                         hideSubmitButtonLoadingIcon(submitButton);
@@ -186,6 +188,11 @@ define([
                         return Notification.exception(error);
                     });
             }
+        });
+
+        root.on('click', Selectors.post.inpageCancelButton, function(e) {
+            // Tell formchangechecker to reset the form state.
+            FormChangeChecker.resetFormDirtyState(e.currentTarget);
         });
     };
 

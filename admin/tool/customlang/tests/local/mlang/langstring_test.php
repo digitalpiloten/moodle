@@ -36,7 +36,7 @@ use moodle_exception;
  * @copyright  2020 Ferran Recio <ferran@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class langstring_testcase extends advanced_testcase {
+class langstring_test extends advanced_testcase {
 
     /**
      * Sanity 1.x string
@@ -60,7 +60,7 @@ class langstring_testcase extends advanced_testcase {
      *
      * @return  array
      */
-    public function fix_syntax_data() : array {
+    public function fix_syntax_data(): array {
         return [
             // Syntax sanity v1 strings.
             [

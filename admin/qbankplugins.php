@@ -27,6 +27,9 @@
 require_once('../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 
+use core\event\qbank_plugin_enabled;
+use core\event\qbank_plugin_disabled;
+
 $action = required_param('action', PARAM_ALPHANUMEXT);
 $name   = required_param('name', PARAM_PLUGIN);
 
@@ -46,15 +49,20 @@ if (!isset($plugins[$name])) {
     throw new moodle_exception('qbanknotfound', 'question', $return, $name);
 }
 
+$plugintypename = $plugins[$name]->type . '_' . $plugins[$name]->name;
+
 switch ($action) {
     case 'disable':
         if ($plugins[$name]->is_enabled()) {
+            qbank_plugin_disabled::create_for_plugin($plugintypename)->trigger();
             $class = \core_plugin_manager::resolve_plugininfo_class('qbank');
             $class::enable_plugin($name, false);
+            set_config('disabled', 1, 'qbank_'. $name);
         }
         break;
     case 'enable':
         if (!$plugins[$name]->is_enabled()) {
+            qbank_plugin_enabled::create_for_plugin($plugintypename)->trigger();
             $class = \core_plugin_manager::resolve_plugininfo_class('qbank');
             $class::enable_plugin($name, true);
         }

@@ -24,11 +24,12 @@
 
 namespace core_courseformat\output\local\content;
 
+use core\output\named_templatable;
 use core_courseformat\base as course_format;
+use core_courseformat\output\local\courseformat_named_templatable;
 use renderable;
-use templatable;
-use url_select;
 use stdClass;
+use url_select;
 
 /**
  * Represents the section selector.
@@ -37,7 +38,9 @@ use stdClass;
  * @copyright 2020 Ferran Recio <ferran@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class sectionselector implements renderable, templatable {
+class sectionselector implements named_templatable, renderable {
+
+    use courseformat_named_templatable;
 
     /** @var course_format the course format class */
     protected $format;
@@ -82,7 +85,7 @@ class sectionselector implements renderable, templatable {
         $numsections = $format->get_last_section_number();
         while ($section <= $numsections) {
             $thissection = $modinfo->get_section_info($section);
-            $url = course_get_url($course, $section);
+            $url = course_get_url($course, $section, ['navigation' => true]);
             if ($thissection->uservisible && $url && $section != $data->currentsection) {
                 $sectionmenu[$url->out(false)] = get_section_name($course, $section);
             }

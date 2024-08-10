@@ -25,6 +25,7 @@
 
 require_once(__DIR__ . '/../../../config.php');
 require_once(__DIR__ . '/../../editlib.php');
+
 global $DB, $OUTPUT, $PAGE, $COURSE;
 
 $moveselected = optional_param('move', false, PARAM_BOOL);
@@ -52,13 +53,15 @@ if ($cmid) {
     throw new moodle_exception('missingcourseorcmid', 'question');
 }
 
-$contexts = new question_edit_contexts($thiscontext);
+$contexts = new core_question\local\bank\question_edit_contexts($thiscontext);
 $url = new moodle_url('/question/bank/bulkmove/move.php');
 
 $PAGE->set_url($url);
 $streditingquestions = get_string('movequestions', 'qbank_bulkmove');
 $PAGE->set_title($streditingquestions);
 $PAGE->set_heading($COURSE->fullname);
+$PAGE->activityheader->disable();
+$PAGE->set_secondary_active_tab("questionbank");
 
 if ($category) {
     list($tocategoryid, $contextid) = explode(',', $category);
@@ -72,7 +75,11 @@ if ($movequestionselected && $confirm && confirm_sesskey()) {
     if ($confirm == md5($movequestionselected)) {
         \qbank_bulkmove\helper::bulk_move_questions($movequestionselected, $tocategory);
     }
-    redirect(new moodle_url($returnurl, ['category' => "{$tocategoryid},{$contextid}"]));
+    $returnfilters = \core_question\local\bank\filter_condition_manager::update_filter_param_to_category(
+        $returnurl->param('filter'),
+        $tocategoryid,
+    );
+    redirect(new moodle_url($returnurl, ['filter' => $returnfilters]));
 }
 
 echo $OUTPUT->header();

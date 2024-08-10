@@ -14,15 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * External completion functions unit tests
- *
- * @package    core_completion
- * @category   external
- * @copyright  2015 Juan Leyva <juan@moodle.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @since      Moodle 2.9
- */
+namespace core_completion;
+
+use core_completion_external;
+use core_external\external_api;
+use externallib_advanced_testcase;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -38,13 +34,14 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  * @copyright  2015 Juan Leyva <juan@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since      Moodle 2.9
+ * @coversDefaultClass \core_completion_external
  */
-class core_completion_externallib_testcase extends externallib_advanced_testcase {
+class externallib_test extends externallib_advanced_testcase {
 
     /**
      * Test update_activity_completion_status_manually
      */
-    public function test_update_activity_completion_status_manually() {
+    public function test_update_activity_completion_status_manually(): void {
         global $DB, $CFG;
 
         $this->resetAfterTest(true);
@@ -71,7 +68,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
                             array('coursemoduleid' => $data->cmid)));
 
         // Check using the API.
-        $completion = new completion_info($course);
+        $completion = new \completion_info($course);
         $completiondata = $completion->get_data($cm);
         $this->assertEquals(1, $completiondata->completionstate);
         $this->assertTrue($result['status']);
@@ -91,7 +88,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
     /**
      * Test update_activity_completion_status
      */
-    public function test_get_activities_completion_status() {
+    public function test_get_activities_completion_status(): void {
         global $DB, $CFG, $PAGE;
 
         $this->resetAfterTest(true);
@@ -103,7 +100,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
         $course = $this->getDataGenerator()->create_course(array('enablecompletion' => 1,
                                                                     'groupmode' => SEPARATEGROUPS,
                                                                     'groupmodeforce' => 1));
-        availability_completion\condition::wipe_static_cache();
+        \availability_completion\condition::wipe_static_cache();
 
         $data = $this->getDataGenerator()->create_module('data',
             ['course' => $course->id],
@@ -152,7 +149,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
 
         $this->setUser($student);
         // Forum complete.
-        $completion = new completion_info($course);
+        $completion = new \completion_info($course);
         $completion->update_state($cmforum, COMPLETION_COMPLETE);
 
         $result = core_completion_external::get_activities_completion_status($course->id, $student->id);
@@ -181,6 +178,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
                 $this->assertTrue($status['uservisible']);
                 $details = $status['details'];
                 $this->assertCount(0, $details);
+                $this->assertTrue($status['isoverallcomplete']);
             } else if ($status['cmid'] == $forumautocompletion->cmid) {
                 $activitiesfound++;
                 $this->assertEquals(COMPLETION_INCOMPLETE, $status['state']);
@@ -194,7 +192,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
                 $this->assertCount(1, $details);
                 $this->assertEquals('completionview', $details[0]['rulename']);
                 $this->assertEquals(0, $details[0]['rulevalue']['status']);
-
+                $this->assertFalse($status['isoverallcomplete']);
             } else if ($status['cmid'] == $assignautocompletion->cmid) {
                 $activitiesfound++;
                 $this->assertEquals(COMPLETION_INCOMPLETE, $status['state']);
@@ -204,6 +202,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
                 $this->assertTrue($status['isautomatic']);
                 $this->assertTrue($status['istrackeduser']);
                 $this->assertTrue($status['uservisible']);
+                $this->assertFalse($status['isoverallcomplete']);
                 $details = $status['details'];
                 $this->assertCount(3, $details);
                 $expecteddetails = [
@@ -227,6 +226,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
                 $this->assertTrue($status['uservisible']);
                 $details = $status['details'];
                 $this->assertCount(0, $details);
+                $this->assertFalse($status['isoverallcomplete']);
             }
         }
         $this->assertEquals(4, $activitiesfound);
@@ -254,6 +254,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
                 $this->assertEquals(COMPLETION_INCOMPLETE, $status['state']);
                 $this->assertEquals(COMPLETION_TRACKING_MANUAL, $status['tracking']);
                 $this->assertEquals($teacher->id, $status['overrideby']);
+                $this->assertFalse($status['isoverallcomplete']);
                 break;
             }
         }
@@ -261,7 +262,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
         // Teacher should see his own completion status.
 
         // Forum complete for teacher.
-        $completion = new completion_info($course);
+        $completion = new \completion_info($course);
         $completion->update_state($cmforum, COMPLETION_COMPLETE);
 
         $result = core_completion_external::get_activities_completion_status($course->id, $teacher->id);
@@ -277,27 +278,30 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
                 $activitiesfound++;
                 $this->assertEquals(COMPLETION_COMPLETE, $status['state']);
                 $this->assertEquals(COMPLETION_TRACKING_MANUAL, $status['tracking']);
+                $this->assertTrue($status['isoverallcomplete']);
             } else if (in_array($status['cmid'], [$forumautocompletion->cmid, $assignautocompletion->cmid])) {
                 $activitiesfound++;
                 $this->assertEquals(COMPLETION_INCOMPLETE, $status['state']);
                 $this->assertEquals(COMPLETION_TRACKING_AUTOMATIC, $status['tracking']);
+                $this->assertFalse($status['isoverallcomplete']);
             } else {
                 $activitiesfound++;
                 $this->assertEquals(COMPLETION_INCOMPLETE, $status['state']);
                 $this->assertEquals(COMPLETION_TRACKING_MANUAL, $status['tracking']);
+                $this->assertFalse($status['isoverallcomplete']);
             }
         }
         $this->assertEquals(5, $activitiesfound);
 
         // Change teacher role capabilities (disable access all groups).
-        $context = context_course::instance($course->id);
+        $context = \context_course::instance($course->id);
         assign_capability('moodle/site:accessallgroups', CAP_PROHIBIT, $teacherrole->id, $context);
         accesslib_clear_all_caches_for_unit_testing();
 
         try {
             $result = core_completion_external::get_activities_completion_status($course->id, $student->id);
             $this->fail('Exception expected due to groups permissions.');
-        } catch (moodle_exception $e) {
+        } catch (\moodle_exception $e) {
             $this->assertEquals('accessdenied', $e->errorcode);
         }
 
@@ -313,7 +317,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
     /**
      * Test override_activity_completion_status
      */
-    public function test_override_activity_completion_status() {
+    public function test_override_activity_completion_status(): void {
         global $DB, $CFG;
         $this->resetAfterTest(true);
 
@@ -336,7 +340,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
 
         // Manually complete the data activity as the student.
         $this->setUser($student);
-        $completion = new completion_info($course);
+        $completion = new \completion_info($course);
         $completion->update_state($cmdata, COMPLETION_COMPLETE);
 
         // Test overriding the status of the manual-completion-activity 'incomplete'.
@@ -376,7 +380,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
     /**
      * Test overriding the activity completion status as a user without the capability to do so.
      */
-    public function test_override_status_user_without_capability() {
+    public function test_override_status_user_without_capability(): void {
         global $DB, $CFG;
         $this->resetAfterTest(true);
 
@@ -389,7 +393,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
         $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
         $teacherrole = $DB->get_record('role', ['shortname' => 'teacher']);
         $this->getDataGenerator()->enrol_user($teacher->id, $course->id, $teacherrole->id);
-        $coursecontext = context_course::instance($course->id);
+        $coursecontext = \context_course::instance($course->id);
 
         // Create an activity with automatic completion (a forum).
         $forum   = $this->getDataGenerator()->create_module('forum',  ['course' => $course->id],
@@ -405,7 +409,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
     /**
      * Test get_course_completion_status
      */
-    public function test_get_course_completion_status() {
+    public function test_get_course_completion_status(): void {
         global $DB, $CFG, $COMPLETION_CRITERIA_TYPES;
         require_once($CFG->dirroot.'/completion/criteria/completion_criteria_self.php');
         require_once($CFG->dirroot.'/completion/criteria/completion_criteria_date.php');
@@ -447,11 +451,11 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
         groups_add_member($group2->id, $teacher->id);
 
         // Set completion rules.
-        $completion = new completion_info($course);
+        $completion = new \completion_info($course);
 
         // Loop through each criteria type and run its update_config() method.
 
-        $criteriadata = new stdClass();
+        $criteriadata = new \stdClass();
         $criteriadata->id = $course->id;
         $criteriadata->criteria_activity = array();
         // Some activities.
@@ -475,12 +479,12 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
             'course'        => $course->id,
             'criteriatype'  => null
         );
-        $aggregation = new completion_aggregation($aggdata);
+        $aggregation = new \completion_aggregation($aggdata);
         $aggregation->setMethod(COMPLETION_AGGREGATION_ALL);
         $aggregation->save();
 
         $aggdata['criteriatype'] = COMPLETION_CRITERIA_TYPE_ACTIVITY;
-        $aggregation = new completion_aggregation($aggdata);
+        $aggregation = new \completion_aggregation($aggdata);
         $aggregation->setMethod(COMPLETION_AGGREGATION_ALL);
         $aggregation->save();
 
@@ -511,14 +515,14 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
         $this->assertEquals($studentresult, $teacherresult);
 
         // Change teacher role capabilities (disable access al goups).
-        $context = context_course::instance($course->id);
+        $context = \context_course::instance($course->id);
         assign_capability('moodle/site:accessallgroups', CAP_PROHIBIT, $teacherrole->id, $context);
         accesslib_clear_all_caches_for_unit_testing();
 
         try {
             $result = core_completion_external::get_course_completion_status($course->id, $student->id);
             $this->fail('Exception expected due to groups permissions.');
-        } catch (moodle_exception $e) {
+        } catch (\moodle_exception $e) {
             $this->assertEquals('accessdenied', $e->errorcode);
         }
 
@@ -536,7 +540,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
     /**
      * Test mark_course_self_completed
      */
-    public function test_mark_course_self_completed() {
+    public function test_mark_course_self_completed(): void {
         global $DB, $CFG;
         require_once($CFG->dirroot.'/completion/criteria/completion_criteria_self.php');
 
@@ -552,9 +556,9 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
         $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
 
         // Set completion rules.
-        $completion = new completion_info($course);
+        $completion = new \completion_info($course);
 
-        $criteriadata = new stdClass();
+        $criteriadata = new \stdClass();
         $criteriadata->id = $course->id;
         $criteriadata->criteria_activity = array();
 
@@ -569,7 +573,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
             'course'        => $course->id,
             'criteriatype'  => null
         );
-        $aggregation = new completion_aggregation($aggdata);
+        $aggregation = new \completion_aggregation($aggdata);
         $aggregation->setMethod(COMPLETION_AGGREGATION_ALL);
         $aggregation->save();
 
@@ -594,7 +598,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
         try {
             $result = core_completion_external::mark_course_self_completed($course->id);
             $this->fail('Exception expected due course already self completed.');
-        } catch (moodle_exception $e) {
+        } catch (\moodle_exception $e) {
             $this->assertEquals('useralreadymarkedcomplete', $e->errorcode);
         }
 

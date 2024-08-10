@@ -22,16 +22,15 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Unit tests tests for has_capability.
  *
  * @package    core
  * @copyright  2018 Andrew Nicols <andrew@nicols.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers ::has_capability
  */
-class accesslib_has_capability_testcase extends \advanced_testcase {
+class accesslib_has_capability_test extends \advanced_testcase {
 
     /**
      * Unit tests to check the operation of locked contexts.
@@ -43,7 +42,7 @@ class accesslib_has_capability_testcase extends \advanced_testcase {
      * @param   string[]    $lockedcontexts The list of contexts, by name, to mark as locked
      * @param   string[]    $blocked The list of contexts which will be 'blocked' by has_capability
      */
-    public function test_locked_contexts($lockedcontexts, $blocked) {
+    public function test_locked_contexts($lockedcontexts, $blocked): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -208,7 +207,7 @@ class accesslib_has_capability_testcase extends \advanced_testcase {
      * @param   string[]    $lockedcontexts The list of contexts, by name, to mark as locked
      * @param   string[]    $blocked The list of contexts which will be 'blocked' by has_capability
      */
-    public function test_locked_contexts_for_admin_with_config($lockedcontexts, $blocked) {
+    public function test_locked_contexts_for_admin_with_config($lockedcontexts, $blocked): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -515,7 +514,7 @@ class accesslib_has_capability_testcase extends \advanced_testcase {
      *
      * @dataProvider    login_as_provider
      * @param   string $loginascontext
-     * @param   string $testcontexts
+     * @param   array  $testcontexts
      */
     public function test_login_as_admin(string $loginascontext, array $testcontexts): void {
         $this->resetAfterTest();
@@ -539,7 +538,7 @@ class accesslib_has_capability_testcase extends \advanced_testcase {
      *
      * @dataProvider    login_as_provider
      * @param   string $loginascontext
-     * @param   string $testcontexts
+     * @param   array  $testcontexts
      */
     public function test_login_as_user(string $loginascontext, array $testcontexts): void {
         $this->resetAfterTest();

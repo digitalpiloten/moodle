@@ -14,17 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Unit tests for the date condition.
- *
- * @package availability_date
- * @copyright 2014 The Open University
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+namespace availability_date;
 
-defined('MOODLE_INTERNAL') || die();
-
-use availability_date\condition;
 use core_availability\tree;
 
 /**
@@ -34,7 +25,7 @@ use core_availability\tree;
  * @copyright 2014 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class availability_date_condition_testcase extends advanced_testcase {
+class condition_test extends \advanced_testcase {
     /**
      * Load required classes.
      */
@@ -42,12 +33,13 @@ class availability_date_condition_testcase extends advanced_testcase {
         // Load the mock info class so that it can be used.
         global $CFG;
         require_once($CFG->dirroot . '/availability/tests/fixtures/mock_info.php');
+        parent::setUp();
     }
 
     /**
      * Tests constructing and using date condition as part of tree.
      */
-    public function test_in_tree() {
+    public function test_in_tree(): void {
         global $SITE, $USER, $CFG;
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -89,13 +81,13 @@ class availability_date_condition_testcase extends advanced_testcase {
      * Tests the constructor including error conditions. Also tests the
      * string conversion feature (intended for debugging only).
      */
-    public function test_constructor() {
+    public function test_constructor(): void {
         // No parameters.
         $structure = (object)array();
         try {
             $date = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing or invalid ->d', $e->getMessage());
         }
 
@@ -104,7 +96,7 @@ class availability_date_condition_testcase extends advanced_testcase {
         try {
             $date = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing or invalid ->d', $e->getMessage());
         }
 
@@ -113,7 +105,7 @@ class availability_date_condition_testcase extends advanced_testcase {
         try {
             $date = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing or invalid ->t', $e->getMessage());
         }
 
@@ -122,7 +114,7 @@ class availability_date_condition_testcase extends advanced_testcase {
         try {
             $date = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing or invalid ->t', $e->getMessage());
         }
 
@@ -138,7 +130,7 @@ class availability_date_condition_testcase extends advanced_testcase {
     /**
      * Tests the save() function.
      */
-    public function test_save() {
+    public function test_save(): void {
         $structure = (object)array('d' => '>=', 't' => 12345);
         $cond = new condition($structure);
         $structure->type = 'date';
@@ -148,7 +140,7 @@ class availability_date_condition_testcase extends advanced_testcase {
     /**
      * Tests the is_available() and is_available_to_all() functions.
      */
-    public function test_is_available() {
+    public function test_is_available(): void {
         global $SITE, $USER;
 
         $time = strtotime('2014-02-18 14:50:10 GMT');
@@ -179,7 +171,7 @@ class availability_date_condition_testcase extends advanced_testcase {
     /**
      * Tests the get_description and get_standalone_description functions.
      */
-    public function test_get_description() {
+    public function test_get_description(): void {
         global $SITE, $CFG;
 
         $this->resetAfterTest();
@@ -241,7 +233,7 @@ class availability_date_condition_testcase extends advanced_testcase {
     /**
      * Tests the update_all_dates function.
      */
-    public function test_update_all_dates() {
+    public function test_update_all_dates(): void {
         global $DB;
         $this->resetAfterTest();
 

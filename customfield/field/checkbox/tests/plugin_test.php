@@ -14,18 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Tests for class customfield_checkbox
- *
- * @package    customfield_checkbox
- * @copyright  2019 Marina Glancy
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+namespace customfield_checkbox;
 
-defined('MOODLE_INTERNAL') || die();
-
-use customfield_checkbox\field_controller;
-use customfield_checkbox\data_controller;
+use core_customfield_generator;
+use core_customfield_test_instance_form;
 
 /**
  * Functional test for customfield_checkbox
@@ -34,9 +26,9 @@ use customfield_checkbox\data_controller;
  * @copyright  2019 Marina Glancy
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class customfield_checkbox_plugin_testcase extends advanced_testcase {
+class plugin_test extends \advanced_testcase {
 
-    /** @var stdClass[]  */
+    /** @var \stdClass[]  */
     private $courses = [];
     /** @var \core_customfield\category_controller */
     private $cfcat;
@@ -49,6 +41,7 @@ class customfield_checkbox_plugin_testcase extends advanced_testcase {
      * Tests set up.
      */
     public function setUp(): void {
+        parent::setUp();
         $this->resetAfterTest();
 
         $this->cfcat = $this->get_generator()->create_category();
@@ -76,14 +69,14 @@ class customfield_checkbox_plugin_testcase extends advanced_testcase {
      * Get generator
      * @return core_customfield_generator
      */
-    protected function get_generator() : core_customfield_generator {
+    protected function get_generator(): core_customfield_generator {
         return $this->getDataGenerator()->get_plugin_generator('core_customfield');
     }
 
     /**
      * Test for initialising field and data controllers
      */
-    public function test_initialise() {
+    public function test_initialise(): void {
         $f = \core_customfield\field_controller::create($this->cfields[1]->get('id'));
         $this->assertTrue($f instanceof field_controller);
 
@@ -102,7 +95,7 @@ class customfield_checkbox_plugin_testcase extends advanced_testcase {
      *
      * Create a configuration form and submit it with the same values as in the field
      */
-    public function test_config_form() {
+    public function test_config_form(): void {
         $this->setAdminUser();
         $submitdata = (array)$this->cfields[1]->to_record();
         $submitdata['configdata'] = $this->cfields[1]->get('configdata');
@@ -127,7 +120,7 @@ class customfield_checkbox_plugin_testcase extends advanced_testcase {
     /**
      * Test for instance form functions
      */
-    public function test_instance_form() {
+    public function test_instance_form(): void {
         global $CFG;
         require_once($CFG->dirroot . '/customfield/tests/fixtures/test_instance_form.php');
         $this->setAdminUser();
@@ -156,17 +149,17 @@ class customfield_checkbox_plugin_testcase extends advanced_testcase {
     /**
      * Test for data_controller::get_value and export_value
      */
-    public function test_get_export_value() {
+    public function test_get_export_value(): void {
         $this->assertEquals(1, $this->cfdata[1]->get_value());
         $this->assertEquals('Yes', $this->cfdata[1]->export_value());
 
         // Field without data.
-        $d = core_customfield\data_controller::create(0, null, $this->cfields[2]);
+        $d = \core_customfield\data_controller::create(0, null, $this->cfields[2]);
         $this->assertEquals(0, $d->get_value());
         $this->assertEquals('No', $d->export_value());
 
         // Field without data that is checked by default.
-        $d = core_customfield\data_controller::create(0, null, $this->cfields[3]);
+        $d = \core_customfield\data_controller::create(0, null, $this->cfields[3]);
         $this->assertEquals(1, $d->get_value());
         $this->assertEquals('Yes', $d->export_value());
     }
@@ -174,7 +167,7 @@ class customfield_checkbox_plugin_testcase extends advanced_testcase {
     /**
      * Deleting fields and data
      */
-    public function test_delete() {
+    public function test_delete(): void {
         $this->cfcat->get_handler()->delete_all();
     }
 }

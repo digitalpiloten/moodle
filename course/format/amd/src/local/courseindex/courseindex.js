@@ -65,7 +65,7 @@ export default class Component extends BaseComponent {
      * @return {Component}
      */
     static init(target, selectors) {
-        return new Component({
+        return new this({
             element: document.getElementById(target),
             reactive: getCurrentCourseEditor(),
             selectors,
@@ -74,8 +74,10 @@ export default class Component extends BaseComponent {
 
     /**
      * Initial state ready method.
+     *
+     * @param {Object} state the state data
      */
-    stateReady() {
+    stateReady(state) {
         // Activate section togglers.
         this.addEventListener(this.element, 'click', this._sectionTogglers);
 
@@ -89,17 +91,22 @@ export default class Component extends BaseComponent {
             this.cms[cm.dataset.id] = cm;
         });
 
+        this._expandPageCmSectionIfNecessary(state);
+        this._refreshPageItem({element: state.course, state});
+
         // Configure Aria Tree.
         this.contentTree = new ContentTree(this.element, this.selectors, this.reactive.isEditing);
     }
 
     getWatchers() {
         return [
-            {watch: `section.isactive:updated`, handler: this._refreshSectionCollapsed},
+            {watch: `section.indexcollapsed:updated`, handler: this._refreshSectionCollapsed},
             {watch: `cm:created`, handler: this._createCm},
             {watch: `cm:deleted`, handler: this._deleteCm},
             {watch: `section:created`, handler: this._createSection},
             {watch: `section:deleted`, handler: this._deleteSection},
+            {watch: `course.pageItem:created`, handler: this._refreshPageItem},
+            {watch: `course.pageItem:updated`, handler: this._refreshPageItem},
             // Sections and cm sorting.
             {watch: `course.sectionlist:updated`, handler: this._refreshCourseSectionlist},
             {watch: `section.cmlist:updated`, handler: this._refreshSectionCmlist},
@@ -124,15 +131,13 @@ export default class Component extends BaseComponent {
             const toggler = section.querySelector(this.selectors.COLLAPSE);
             const isCollapsed = toggler?.classList.contains(this.classes.COLLAPSED) ?? false;
 
-            if (isChevron || isCollapsed) {
-                // Update the state.
-                const sectionId = section.getAttribute('data-id');
+            // Update the state.
+            const sectionId = section.getAttribute('data-id');
+            if (!sectionlink || isCollapsed) {
                 this.reactive.dispatch(
-                    'sectionPreferences',
+                    'sectionIndexCollapsed',
                     [sectionId],
-                    {
-                        isactive: isCollapsed,
-                    },
+                    !isCollapsed
                 );
             }
         }
@@ -153,7 +158,7 @@ export default class Component extends BaseComponent {
         const toggler = target.querySelector(this.selectors.COLLAPSE);
         const isCollapsed = toggler?.classList.contains(this.classes.COLLAPSED) ?? false;
 
-        if (element.isactive === isCollapsed) {
+        if (element.indexcollapsed !== isCollapsed) {
             this._expandSectionNode(element);
         }
     }
@@ -161,9 +166,9 @@ export default class Component extends BaseComponent {
     /**
      * Expand a section node.
      *
-     * By default the method will use element.isactive to decide if the
+     * By default the method will use element.indexcollapsed to decide if the
      * section is opened or closed. However, using forceValue it is possible
-     * to open or close a section independant from the isactive attribute.
+     * to open or close a section independant from the indexcollapsed attribute.
      *
      * @param {Object} element the course module state element
      * @param {boolean} forceValue optional forced expanded value
@@ -182,14 +187,50 @@ export default class Component extends BaseComponent {
         }
 
         if (forceValue === undefined) {
-            forceValue = (element.isactive) ? true : false;
+            forceValue = (element.indexcollapsed) ? false : true;
         }
 
         // Course index is based on Bootstrap 4 collapsibles. To collapse them we need jQuery to
         // interact with collapsibles methods. Hopefully, this will change in Bootstrap 5 because
-        // it does not require jQuery anymore (when MDL-79179 is integrated).
+        // it does not require jQuery anymore (when MDL-71979 is integrated).
         const togglerValue = (forceValue) ? 'show' : 'hide';
         jQuery(collapsible).collapse(togglerValue);
+    }
+
+    /**
+     * Handle a page item update.
+     *
+     * @param {Object} details the update details
+     * @param {Object} details.state the state data.
+     * @param {Object} details.element the course state data.
+     */
+    _refreshPageItem({element, state}) {
+        if (!element?.pageItem?.isStatic || element.pageItem.type != 'cm') {
+            return;
+        }
+        // Check if we need to uncollapse the section and scroll to the element.
+        const section = state.section.get(element.pageItem.sectionId);
+        if (section.indexcollapsed) {
+            this._expandSectionNode(section, true);
+            setTimeout(
+                () => this.cms[element.pageItem.id]?.scrollIntoView({block: "nearest"}),
+                250
+            );
+        }
+    }
+
+    /**
+     * Expand a section if the current page is a section's cm.
+     *
+     * @private
+     * @param {Object} state the course state.
+     */
+    _expandPageCmSectionIfNecessary(state) {
+        const pageCmInfo = this.reactive.getPageAnchorCmInfo();
+        if (!pageCmInfo) {
+            return;
+        }
+        this._expandSectionNode(state.section.get(pageCmInfo.sectionid), true);
     }
 
     /**
@@ -266,10 +307,10 @@ export default class Component extends BaseComponent {
      * Refresh the section list.
      *
      * @param {object} param
-     * @param {Object} param.element
+     * @param {Object} param.state
      */
-    _refreshCourseSectionlist({element}) {
-        const sectionlist = element.sectionlist ?? [];
+    _refreshCourseSectionlist({state}) {
+        const sectionlist = this.reactive.getExporter().listedSectionIds(state);
         this._fixOrder(this.element, sectionlist, this.sections);
     }
 
@@ -301,7 +342,7 @@ export default class Component extends BaseComponent {
                 container.append(item);
                 return;
             }
-            if (currentitem !== item) {
+            if (currentitem !== item && item) {
                 container.insertBefore(item, currentitem);
             }
         });

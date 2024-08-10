@@ -55,14 +55,12 @@ $params += ($mode ? ['mode' => $mode] : []);
 $activeurl = new moodle_url('/mod/feedback/manage_templates.php', $params);
 $PAGE->set_url($activeurl);
 
-if ($mode == 'manage') {
-    navigation_node::override_active_url($activeurl);
-} else {
-    navigation_node::override_active_url(new moodle_url('/mod/feedback/view.php', $params));
-}
-
 $PAGE->set_heading($course->fullname);
 $PAGE->set_title($feedback->name);
+$PAGE->activityheader->set_attrs([
+    "hidecompletion" => true,
+    "description" => ''
+]);
 $actionbar = new \mod_feedback\output\edit_template_action_bar($cm->id, $templateid, $mode);
 /** @var \mod_feedback\output\renderer $renderer */
 $renderer = $PAGE->get_renderer('mod_feedback');

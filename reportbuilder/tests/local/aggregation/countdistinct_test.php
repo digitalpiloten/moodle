@@ -53,26 +53,48 @@ class countdistinct_test extends core_reportbuilder_testcase {
         $generator = $this->getDataGenerator()->get_plugin_generator('core_reportbuilder');
         $report = $generator->create_report(['name' => 'Users', 'source' => users::class, 'default' => 0]);
 
-        // First column, sorted.
-        $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:firstname'])
-            ->set('sortenabled', true)
-            ->update();
-
-        // This is the column we'll aggregate.
-        $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:lastname'])
-            ->set('aggregation', countdistinct::get_class_name())
-            ->update();
+        // Report columns, aggregated/sorted by user lastname.
+        $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'user:firstname']);
+        $generator->create_column([
+            'reportid' => $report->get('id'),
+            'uniqueidentifier' => 'user:lastname',
+            'aggregation' => countdistinct::get_class_name(),
+            'sortenabled' => 1,
+            'sortdirection' => SORT_DESC,
+        ]);
 
         $content = $this->get_custom_report_content($report->get('id'));
         $this->assertEquals([
-            [
-                'c0_firstname' => 'Admin',
-                'c1_lastname' => 1,
-            ],
-            [
-                'c0_firstname' => 'Bob',
-                'c1_lastname' => 2,
-            ],
-        ], $content);
+            ['Bob', 2],
+            ['Admin', 1],
+        ], array_map('array_values', $content));
+    }
+
+    /**
+     * Test aggregation when applied to column with multiple fields
+     */
+    public function test_column_aggregation_multiple_fields(): void {
+        $this->resetAfterTest();
+
+        // Create a user with the same firstname as existing admin.
+        $this->getDataGenerator()->create_user(['firstname' => 'Admin', 'lastname' => 'Test']);
+
+        /** @var core_reportbuilder_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_reportbuilder');
+        $report = $generator->create_report(['name' => 'Users', 'source' => users::class, 'default' => 0]);
+
+        // This is the column we'll aggregate.
+        $generator->create_column([
+            'reportid' => $report->get('id'),
+            'uniqueidentifier' => 'user:fullname',
+            'aggregation' => countdistinct::get_class_name(),
+        ]);
+
+        $content = $this->get_custom_report_content($report->get('id'));
+        $this->assertCount(1, $content);
+
+        // There are two distinct fullnames ("Admin User" & "Admin Test").
+        $countdistinct = reset($content[0]);
+        $this->assertEquals(2, $countdistinct);
     }
 }

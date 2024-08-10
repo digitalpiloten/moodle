@@ -27,6 +27,9 @@
 
 namespace qbank_editquestion;
 
+use core_question\local\bank\question_version_status;
+use qbank_editquestion\output\add_new_question;
+
 /**
  * Class editquestion_helper for methods related to add/edit/copy
  *
@@ -67,20 +70,35 @@ class editquestion_helper {
      * @param bool $canadd the text to display on the button.
      * @param string $tooltip a tooltip to add to the button (optional).
      * @param bool $disabled if true, the button will be disabled.
+     * @deprecated since Moodle 4.3. Use {@see add_new_question} renderable instead
+     * @todo Final deprecation in Moodle 4.7
      */
     public static function create_new_question_button($categoryid, $params, $canadd, $tooltip = '', $disabled = false) {
-        global $PAGE, $OUTPUT;
-
-        $addquestiondisplay = array();
-        $addquestiondisplay['canadd'] = $canadd;
-        if ($canadd) {
-            $params['category'] = $categoryid;
-            $url = new \moodle_url('/question/bank/editquestion/addquestion.php', $params);
-            $addquestiondisplay['buttonhtml'] = $OUTPUT->single_button($url,
-                    get_string('createnewquestion', 'question'),
-                    'get', array('disabled' => $disabled, 'title' => $tooltip));
-            $addquestiondisplay['qtypeform'] = self::print_choose_qtype_to_add_form(array());
-        }
-        return $PAGE->get_renderer('qbank_editquestion')->render_create_new_question_button($addquestiondisplay);
+        global $OUTPUT;
+        debugging('create_new_question_button() is deprecated. Use the add_new_question renderable instead.');
+        return $OUTPUT->render(new add_new_question($categoryid, $params, $canadd));
     }
+
+    /**
+     * Get the string for the status of the question.
+     *
+     * @param string $status
+     * @return string
+     */
+    public static function get_question_status_string($status): string {
+        return get_string('questionstatus' . $status, 'qbank_editquestion');
+    }
+
+    /**
+     * Get the array of status of the questions.
+     *
+     * @return array
+     */
+    public static function get_question_status_list(): array {
+        $statuslist = [];
+        $statuslist[question_version_status::QUESTION_STATUS_READY] = get_string('questionstatusready', 'qbank_editquestion');
+        $statuslist[question_version_status::QUESTION_STATUS_DRAFT] = get_string('questionstatusdraft', 'qbank_editquestion');
+        return $statuslist;
+    }
+
 }

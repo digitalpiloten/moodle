@@ -14,15 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
- * Quiz module test data generator class
+ * Quiz module test data generator.
  *
- * @package    moodlecore
- * @subpackage question
+ * @package    core_question
  * @copyright  2013 The Open University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+use core_question\local\bank\question_version_status;
+
+/**
+ * Class core_question_generator for generating question data.
+ *
+ * @package   core_question
+ * @copyright 2013 The Open University
+ * @author    2021 Safat Shahin <safatshahin@catalyst-au.net>
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class core_question_generator extends component_generator_base {
 
@@ -31,19 +39,23 @@ class core_question_generator extends component_generator_base {
      */
     protected $categorycount = 0;
 
+    /**
+     * Make the category count to zero.
+     */
     public function reset() {
         $this->categorycount = 0;
     }
 
     /**
      * Create a new question category.
+     *
      * @param array|stdClass $record
      * @return stdClass question_categories record.
      */
     public function create_question_category($record = null) {
         global $DB;
 
-        $this->categorycount++;
+        $this->categorycount ++;
 
         $defaults = [
             'name'       => 'Test question category ' . $this->categorycount,
@@ -57,7 +69,11 @@ class core_question_generator extends component_generator_base {
         $record = $this->datagenerator->combine_defaults_and_record($defaults, $record);
 
         if (!isset($record['contextid'])) {
-            $record['contextid'] = context_system::instance()->id;
+            if (isset($record['parent'])) {
+                $record['contextid'] = $DB->get_field('question_categories', 'contextid', ['id' => $record['parent']]);
+            } else {
+                $record['contextid'] = context_system::instance()->id;
+            }
         }
         if (!isset($record['parent'])) {
             $record['parent'] = question_get_top_category($record['contextid'], true)->id;
@@ -79,18 +95,11 @@ class core_question_generator extends component_generator_base {
      * @return stdClass the question data.
      */
     public function create_question($qtype, $which = null, $overrides = null) {
-        global $CFG;
-        require_once($CFG->dirroot . '/question/engine/tests/helpers.php');
-
-        $fromform = test_question_maker::get_question_form_data($qtype, $which);
-        $fromform = (object) $this->datagenerator->combine_defaults_and_record(
-                (array) $fromform, $overrides);
-
         $question = new stdClass();
-        $question->category  = $fromform->category;
-        $question->qtype     = $qtype;
+        $question->qtype = $qtype;
         $question->createdby = 0;
         $question->idnumber = null;
+        $question->status = question_version_status::QUESTION_STATUS_READY;
 
         return $this->update_question($question, $which, $overrides);
     }
@@ -113,19 +122,19 @@ class core_question_generator extends component_generator_base {
      * @param string $which as for the corresponding argument of
      *      {@link question_test_helper::get_question_form_data}. null for the default one.
      * @param array|stdClass $overrides any fields that should be different from the base example.
-     * @return stdClass the question data.
+     * @return stdClass the question data, including version info and questionbankentryid
      */
     public function update_question($question, $which = null, $overrides = null) {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/question/engine/tests/helpers.php');
+        $question = clone($question);
 
         $qtype = $question->qtype;
 
         $fromform = test_question_maker::get_question_form_data($qtype, $which);
-        $fromform = (object) $this->datagenerator->combine_defaults_and_record(
-                (array) $question, $fromform);
-        $fromform = (object) $this->datagenerator->combine_defaults_and_record(
-                (array) $fromform, $overrides);
+        $fromform = (object) $this->datagenerator->combine_defaults_and_record((array) $question, $fromform);
+        $fromform = (object) $this->datagenerator->combine_defaults_and_record((array) $fromform, $overrides);
+        $fromform->status = $fromform->status ?? $question->status;
 
         $question = question_bank::get_qtype($qtype)->save_question($question, $fromform);
 
@@ -140,6 +149,11 @@ class core_question_generator extends component_generator_base {
             }
             $DB->update_record('question', $question);
         }
+        $questionversion = $DB->get_record('question_versions', ['questionid' => $question->id], '*', MUST_EXIST);
+        $question->versionid = $questionversion->id;
+        $question->questionbankentryid = $questionversion->questionbankentryid;
+        $question->version = $questionversion->version;
+        $question->status = $questionversion->status;
 
         return $question;
     }
@@ -188,13 +202,13 @@ class core_question_generator extends component_generator_base {
      * responses to a number of questions within a question usage.
      *
      * In the responses array, the array keys are the slot numbers for which a response will
-     * be submitted. You can submit a response to any number of responses within the usage.
+     * be submitted. You can submit a response to any number of questions within the usage.
      * There is no need to do them all. The values are a string representation of the response.
      * The exact meaning of that depends on the particular question type. These strings
      * are passed to the un_summarise_response method of the question to decode.
      *
      * @param question_usage_by_activity $quba the question usage.
-     * @param array $responses the resonses to submit, in the format described above.
+     * @param array $responses the responses to submit, in the format described above.
      * @param bool $checkbutton if simulate a click on the check button for each question, else simulate save.
      *      This should only be used with behaviours that have a check button.
      * @return array that can be passed to methods like $quba->process_all_actions as simulated POST data.
